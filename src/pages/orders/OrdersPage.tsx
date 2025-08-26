@@ -1,0 +1,575 @@
+import { yupResolver } from '@hookform/resolvers/yup';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+    Calendar,
+    CheckCircle,
+    ChefHat,
+    Clock,
+    DollarSign,
+    Eye,
+    MapPin,
+    MessageSquare,
+    Phone,
+    Truck,
+    XCircle
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import * as yup from 'yup';
+
+import type { Order, OrderFilters, SendMessageForm, UpdateOrderStatusForm } from '@/types';
+import { formatCurrency, formatDate } from '@/utils';
+import { DEFAULTS, ORDER_STATUS, ORDER_STATUS_LABELS } from '@constants';
+import { apiService } from '@services/api';
+import { log } from '@utils/logger';
+
+import { FormField, SearchInput } from '@components/forms';
+import {
+    Badge,
+    Button,
+    Modal,
+    Pagination,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from '@components/ui';
+
+const updateStatusSchema = yup.object({
+  status: yup
+    .string()
+    .oneOf(Object.values(ORDER_STATUS), 'Invalid status')
+    .required('Status is required'),
+  note: yup.string(),
+});
+
+const sendMessageSchema = yup.object({
+  message: yup
+    .string()
+    .required('Message is required')
+    .min(1, 'Message cannot be empty')
+    .max(500, 'Message must be less than 500 characters'),
+});
+
+const OrdersPage: React.FC = () => {
+  const [filters, setFilters] = useState<OrderFilters>(DEFAULTS.ORDER_FILTERS);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { control: statusControl, handleSubmit: handleStatusSubmit, reset: resetStatus } = useForm<UpdateOrderStatusForm>({
+    resolver: yupResolver(updateStatusSchema) as any,
+  });
+
+  const { control: messageControl, handleSubmit: handleMessageSubmit, reset: resetMessage } = useForm<SendMessageForm>({
+    resolver: yupResolver(sendMessageSchema),
+  });
+
+  // Fetch orders query
+  const { data: ordersData, isLoading, error } = useQuery({
+    queryKey: ['orders', filters],
+    queryFn: () => apiService.getOrders(filters),
+    placeholderData: (previousData) => previousData,
+  });
+
+  // Update order status mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateOrderStatusForm }) => 
+      apiService.updateOrderStatus(id, data),
+    onSuccess: () => {
+      log.ui.userAction('order-status-updated');
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setIsStatusModalOpen(false);
+      resetStatus();
+    },
+  });
+
+  // Send message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: SendMessageForm }) => 
+      apiService.sendOrderMessage(id, data),
+    onSuccess: () => {
+      log.ui.userAction('order-message-sent');
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setIsMessageModalOpen(false);
+      resetMessage();
+    },
+  });
+
+  const handleSearch = (search: string) => {
+    log.ui.userAction('orders-search', { query: search });
+    setFilters(prev => ({ ...prev, search, page: 1 }));
+  };
+
+  const handlePageChange = (page: number) => {
+    setFilters(prev => ({ ...prev, page }));
+  };
+
+  const handleFilterChange = (key: keyof OrderFilters, value: unknown) => {
+    log.ui.userAction('orders-filter-change', { key, value });
+    setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  const handleViewOrder = (order: Order) => {
+    log.ui.userAction('view-order', { orderId: order.id });
+    setSelectedOrder(order);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleUpdateStatus = (order: Order) => {
+    log.ui.userAction('update-order-status-open', { orderId: order.id });
+    setSelectedOrder(order);
+    resetStatus({ status: order.status, note: '' });
+    setIsStatusModalOpen(true);
+  };
+
+  const handleSendMessage = (order: Order) => {
+    log.ui.userAction('send-order-message-open', { orderId: order.id });
+    setSelectedOrder(order);
+    resetMessage({ message: '' });
+    setIsMessageModalOpen(true);
+  };
+
+  const onUpdateStatus = async (data: UpdateOrderStatusForm) => {
+    if (!selectedOrder) return;
+    log.form.submit('UpdateOrderStatusForm', { 
+      orderId: selectedOrder.id, 
+      fromStatus: selectedOrder.status, 
+      toStatus: data.status 
+    });
+    updateStatusMutation.mutate({ id: selectedOrder.id, data });
+  };
+
+  const onSendMessage = async (data: SendMessageForm) => {
+    if (!selectedOrder) return;
+    log.form.submit('SendMessageForm', { orderId: selectedOrder.id });
+    sendMessageMutation.mutate({ id: selectedOrder.id, data });
+  };
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case ORDER_STATUS.CONFIRMED: return 'info';
+      case ORDER_STATUS.PREPARING: return 'warning';
+      case ORDER_STATUS.READY: return 'success';
+      case ORDER_STATUS.DELIVERED: return 'success';
+      case ORDER_STATUS.CANCELLED: return 'danger';
+      default: return 'secondary';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case ORDER_STATUS.PENDING: return <Clock className="h-4 w-4" />;
+      case ORDER_STATUS.CONFIRMED: return <CheckCircle className="h-4 w-4" />;
+      case ORDER_STATUS.PREPARING: return <ChefHat className="h-4 w-4" />;
+      case ORDER_STATUS.READY: return <CheckCircle className="h-4 w-4" />;
+      case ORDER_STATUS.DELIVERED: return <Truck className="h-4 w-4" />;
+      case ORDER_STATUS.CANCELLED: return <XCircle className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  useEffect(() => {
+    log.ui.componentMount('OrdersPage');
+  }, []);
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h1 className="text-2xl font-bold text-gray-900">Orders Management</h1>
+        </div>
+        <div className="bg-red-50 rounded-lg p-6">
+          <p className="text-red-800">Error loading orders. Please try again.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Orders Management</h1>
+            <p className="text-gray-600 mt-2">
+              View and manage customer orders.
+            </p>
+          </div>
+          <div className="text-sm text-gray-500">
+            Total Orders: {ordersData?.meta?.pagination?.totalItems || 0}
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <SearchInput
+            placeholder="Search orders..."
+            onSearch={handleSearch}
+            initialValue={filters.search || ''}
+          />
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <select
+              value={filters.status || ''}
+              onChange={(e) => handleFilterChange('status', e.target.value || undefined)}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              <option value="">All Status</option>
+              {Object.entries(ORDER_STATUS_LABELS).map(([status, label]) => (
+                <option key={status} value={status}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date From
+            </label>
+            <input
+              type="date"
+              value={filters.date_from || ''}
+              onChange={(e) => handleFilterChange('date_from', e.target.value || undefined)}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date To
+            </label>
+            <input
+              type="date"
+              value={filters.date_to || ''}
+              onChange={(e) => handleFilterChange('date_to', e.target.value || undefined)}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Orders Table */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Order ID</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Items</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                    <span className="ml-2">Loading orders...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : ordersData?.data.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  <div className="text-gray-500">
+                    <ChefHat className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                    <p>No orders found</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              ordersData?.data.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell>
+                    <div className="font-medium text-gray-900">#{order.id.slice(-8)}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {order.customer_name}
+                      </div>
+                      <div className="text-sm text-gray-500 flex items-center">
+                        <Phone className="h-3 w-3 mr-1" />
+                        {order.customer_mobile}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center text-sm font-medium">
+                      <DollarSign className="h-3 w-3 mr-1" />
+                      {formatCurrency(order.total_amount)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusBadgeVariant(order.status)}>
+                      <span className="flex items-center">
+                        {getStatusIcon(order.status)}
+                        <span className="ml-1">{ORDER_STATUS_LABELS[order.status]}</span>
+                      </span>
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm text-gray-500 flex items-center">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {formatDate(order.created_at)}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewOrder(order)}
+                        icon={<Eye className="h-3 w-3" />}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleUpdateStatus(order)}
+                        icon={getStatusIcon(order.status)}
+                      >
+                        Status
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSendMessage(order)}
+                        icon={<MessageSquare className="h-3 w-3" />}
+                      >
+                        Message
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+
+        {/* Pagination */}
+        {ordersData && ordersData.meta?.pagination && ordersData.meta.pagination.totalPages > 1 && (
+          <Pagination
+            currentPage={ordersData.meta.pagination.currentPage || 1}
+            totalPages={ordersData.meta.pagination.totalPages || 1}
+            totalItems={ordersData.meta.pagination.totalItems || 0}
+            itemsPerPage={ordersData.meta.pagination.itemsPerPage || 10}
+            onPageChange={handlePageChange}
+          />
+        )}
+      </div>
+
+      {/* Order Details Modal */}
+      <Modal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        title={`Order #${selectedOrder?.id.slice(-8)}`}
+        size="lg"
+      >
+        {selectedOrder && (
+          <div className="space-y-6">
+            {/* Customer Info */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-3">Customer Information</h4>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center">
+                  <span className="font-medium w-24">Name:</span>
+                  <span>{selectedOrder.customer_name}</span>
+                </div>
+                <div className="flex items-center">
+                  <Phone className="h-4 w-4 mr-2" />
+                  <span className="font-medium w-24">Phone:</span>
+                  <span>{selectedOrder.customer_mobile}</span>
+                </div>
+                <div className="flex items-start">
+                  <MapPin className="h-4 w-4 mr-2 mt-0.5" />
+                  <span className="font-medium w-24">Address:</span>
+                  <div>
+                    <div>{selectedOrder.delivery_address.street}</div>
+                    <div>{selectedOrder.delivery_address.city}, {selectedOrder.delivery_address.state} {selectedOrder.delivery_address.zip_code}</div>
+                    {selectedOrder.delivery_address.landmark && (
+                      <div className="text-sm text-gray-600">Landmark: {selectedOrder.delivery_address.landmark}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Order Items */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-3">Order Items</h4>
+              <div className="space-y-2">
+                {selectedOrder.items.map((item, index) => (
+                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <div className="font-medium">{item.name}</div>
+                      <div className="text-sm text-gray-600">Qty: {item.quantity}</div>
+                      {item.notes && (
+                        <div className="text-sm text-gray-500">Note: {item.notes}</div>
+                      )}
+                    </div>
+                    <div className="font-medium">{formatCurrency(item.price * item.quantity)}</div>
+                  </div>
+                ))}
+                <div className="border-t pt-2 mt-4">
+                  <div className="flex justify-between items-center text-lg font-bold">
+                    <span>Total:</span>
+                    <span>{formatCurrency(selectedOrder.total_amount)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Special Instructions */}
+            {selectedOrder.special_instructions && (
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Special Instructions</h4>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800">{selectedOrder.special_instructions}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Admin Notes */}
+            {selectedOrder.admin_notes && (
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Admin Notes</h4>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-800">{selectedOrder.admin_notes}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Status History */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-3">Status History</h4>
+              <div className="space-y-2">
+                {selectedOrder.status_history.map((history, index) => (
+                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <div className="font-medium">{ORDER_STATUS_LABELS[history.status as keyof typeof ORDER_STATUS_LABELS]}</div>
+                      {history.note && (
+                        <div className="text-sm text-gray-600">{history.note}</div>
+                      )}
+                      <div className="text-xs text-gray-500">by {history.created_by}</div>
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {formatDate(history.created_at)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Update Status Modal */}
+      <Modal
+        isOpen={isStatusModalOpen}
+        onClose={() => setIsStatusModalOpen(false)}
+        title="Update Order Status"
+        description="Change the status of this order"
+        size="md"
+      >
+        <form onSubmit={handleStatusSubmit(onUpdateStatus as any)} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <select
+              {...statusControl.register?.('status')}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              {Object.entries(ORDER_STATUS_LABELS).map(([status, label]) => (
+                <option key={status} value={status}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          <FormField
+            name="note"
+            control={statusControl as any}
+            label="Note (Optional)"
+            placeholder="Add a note about this status change..."
+            helperText="This note will be visible in the status history"
+          />
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsStatusModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              loading={updateStatusMutation.isPending}
+            >
+              Update Status
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Send Message Modal */}
+      <Modal
+        isOpen={isMessageModalOpen}
+        onClose={() => setIsMessageModalOpen(false)}
+        title="Send Message to Customer"
+        description="Send a message to the customer via WhatsApp"
+        size="md"
+      >
+        <form onSubmit={handleMessageSubmit(onSendMessage)} className="space-y-4">
+          <FormField
+            name="message"
+            control={messageControl}
+            label="Message"
+            placeholder="Type your message here..."
+            helperText="This message will be sent to the customer via WhatsApp"
+          />
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsMessageModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              loading={sendMessageMutation.isPending}
+              icon={<MessageSquare className="h-4 w-4" />}
+            >
+              Send Message
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+};
+
+export default OrdersPage;

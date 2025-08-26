@@ -1,0 +1,75 @@
+# Production Docker Compose for BM Admin App
+
+version: '3.8'
+
+services:
+  # Frontend (React App)
+  frontend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: bm-admin-frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro  # SSL certificates
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - bm-network
+
+  # Backend API (Your existing backend)
+  backend:
+    image: your-backend-image:latest
+    container_name: bm-admin-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGIN=https://yourdomain.com
+    volumes:
+      - ./logs/backend:/app/logs
+    restart: unless-stopped
+    networks:
+      - bm-network
+
+  # Database (if needed)
+  database:
+    image: postgres:15-alpine
+    container_name: bm-admin-db
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    restart: unless-stopped
+    networks:
+      - bm-network
+
+  # Redis (for caching/sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: bm-admin-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - bm-network
+
+networks:
+  bm-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
