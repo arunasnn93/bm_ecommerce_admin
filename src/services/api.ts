@@ -7,6 +7,7 @@ import type {
   LoginCredentials,
   Order,
   OrderFilters,
+  OrderImage,
   PaginatedResponse,
   SendMessageForm,
   Store,
@@ -192,6 +193,11 @@ class ApiService {
     if (filters.search) params.append('search', filters.search);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
+    
+    // Always include store assignments for admin users
+    params.append('include_store_assignments', 'true');
+    
+    log.debug('Fetching users with store assignments', { filters });
 
     return this.request({
       method: 'GET',
@@ -202,7 +208,7 @@ class ApiService {
   public async getUserById(id: string): Promise<ApiResponse<User>> {
     return this.request({
       method: 'GET',
-      url: `/api/admin/users/${id}`,
+      url: `/api/admin/users/${id}?include_store_assignments=true`,
     });
   }
 
@@ -282,6 +288,32 @@ class ApiService {
       method: 'PUT',
       url: `/api/orders/${id}/message`,
       data,
+    });
+  }
+
+  // Order Image Management APIs
+  public async uploadOrderImages(orderId: string, formData: FormData): Promise<ApiResponse<OrderImage[]>> {
+    return this.request({
+      method: 'POST',
+      url: `/api/orders/${orderId}/images`,
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  }
+
+  public async getOrderImages(orderId: string): Promise<ApiResponse<OrderImage[]>> {
+    return this.request({
+      method: 'GET',
+      url: `/api/orders/${orderId}/images`,
+    });
+  }
+
+  public async deleteOrderImage(orderId: string, imageId: string): Promise<ApiResponse<unknown>> {
+    return this.request({
+      method: 'DELETE',
+      url: `/api/orders/${orderId}/images/${imageId}`,
     });
   }
 

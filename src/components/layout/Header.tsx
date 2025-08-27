@@ -1,7 +1,7 @@
+import { Bell, LogOut, Menu, Settings, User } from 'lucide-react';
 import React, { useState } from 'react';
-import { Menu, Bell, LogOut, User, Settings } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import { getInitials, generateAvatarColor } from '../../utils';
+import { generateAvatarColor, getInitials } from '../../utils';
 
 interface HeaderProps {
   onMenuClick: () => void;

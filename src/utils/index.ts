@@ -102,6 +102,26 @@ export const generateAvatarColor = (name: string) => {
   return colors[index];
 };
 
+// Construct full image URL
+export const getImageUrl = (imagePath: string) => {
+  if (!imagePath) return '';
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // If it starts with /, it's a relative path, prepend the API base URL
+  if (imagePath.startsWith('/')) {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
+    return `${baseUrl}${imagePath}`;
+  }
+  
+  // Otherwise, assume it's a relative path and prepend the API base URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
+  return `${baseUrl}/${imagePath}`;
+};
+
 // Get initials from name
 export const getInitials = (name: string) => {
   return name

@@ -1,4 +1,10 @@
 // User Types
+export interface AssignedStore {
+  store_id: string;
+  store_name: string;
+  assigned_at: string;
+}
+
 export interface User {
   id: string;
   username?: string;
@@ -9,8 +15,11 @@ export interface User {
   is_active: boolean;
   created_at: string;
   last_login_at?: string;
-  store_ids?: string[]; // Store assignments for admin users
-  stores?: Store[]; // Store details for admin users
+  fcm_token?: string;
+  created_by?: string;
+  store_id?: string; // Single store assignment for admin users
+  store?: Store; // Store details for admin users
+  assigned_store?: AssignedStore; // Store assignment from API
 }
 
 // Admin Types
@@ -74,6 +83,7 @@ export interface Order {
   delivery_address: DeliveryAddress;
   special_instructions?: string;
   admin_notes?: string;
+  images?: OrderImage[]; // Order images (max 2)
   created_at: string;
   updated_at: string;
   status_history: OrderStatusHistory[];
@@ -87,20 +97,47 @@ export interface OrderStatusHistory {
   created_by: string;
 }
 
+// Order Image Types
+export interface OrderImage {
+  id: string;
+  order_id: string;
+  filename: string;
+  url: string;
+  file_size: number;
+  width: number;
+  height: number;
+  format: string;
+  order_index: number;
+  uploaded_by: string;
+  created_at: string;
+  updated_at: string;
+  uploader?: {
+    name: string;
+    username: string;
+  };
+}
+
 // Store Image Types
 export interface StoreImage {
   id: string;
+  title: string;
+  description: string;
   filename: string;
-  original_name: string;
-  mimetype: string;
-  size: number;
-  path: string;
   url: string;
-  description?: string;
-  category: string;
+  file_size: number;
+  width: number;
+  height: number;
+  format: string;
+  order_index: number;
   is_active: boolean;
   uploaded_by: string;
   created_at: string;
+  updated_at: string;
+  store_id: string;
+  uploader: {
+    name: string;
+    username: string;
+  };
 }
 
 // API Response Types
@@ -151,8 +188,8 @@ export interface CreateAdminForm {
   username: string;
   password: string;
   name: string;
-  role: 'admin' | 'super_admin';
-  store_ids?: string[]; // Store assignments for the user
+  role?: 'admin' | 'super_admin'; // Optional since it's set automatically in UI
+  store_id?: string; // Single store assignment for the user
 }
 
 export interface UpdateOrderStatusForm {
@@ -167,6 +204,16 @@ export interface UpdateOrderPriceForm {
 
 export interface SendMessageForm {
   message: string;
+}
+
+export interface CreateOrderForm {
+  customer_mobile: string;
+  customer_name: string;
+  items: OrderItem[];
+  total_amount: number;
+  delivery_address: DeliveryAddress;
+  special_instructions?: string;
+  images?: File[]; // Max 2 images
 }
 
 // Dashboard Analytics Types

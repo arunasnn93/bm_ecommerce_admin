@@ -1,17 +1,17 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-    Calendar,
-    CheckCircle,
-    ChefHat,
-    Clock,
-    DollarSign,
-    Eye,
-    MapPin,
-    MessageSquare,
-    Phone,
-    Truck,
-    XCircle
+  Calendar,
+  CheckCircle,
+  ChefHat,
+  Clock,
+  DollarSign,
+  Eye,
+  MapPin,
+  MessageSquare,
+  Phone,
+  Truck,
+  XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -25,16 +25,16 @@ import { log } from '@utils/logger';
 
 import { FormField, SearchInput } from '@components/forms';
 import {
-    Badge,
-    Button,
-    Modal,
-    Pagination,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
+  Badge,
+  Button,
+  Modal,
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@components/ui';
 
 const updateStatusSchema = yup.object({
@@ -266,6 +266,7 @@ const OrdersPage: React.FC = () => {
               <TableHead>Order ID</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Items</TableHead>
+              <TableHead>Images</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created</TableHead>
@@ -275,7 +276,7 @@ const OrdersPage: React.FC = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                     <span className="ml-2">Loading orders...</span>
@@ -284,7 +285,7 @@ const OrdersPage: React.FC = () => {
               </TableRow>
             ) : ordersData?.data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   <div className="text-gray-500">
                     <ChefHat className="mx-auto h-12 w-12 mb-4 opacity-50" />
                     <p>No orders found</p>
@@ -311,6 +312,35 @@ const OrdersPage: React.FC = () => {
                   <TableCell>
                     <div className="text-sm">
                       {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      {order.images && order.images.length > 0 ? (
+                        <div className="flex space-x-1">
+                          {order.images.slice(0, 2).map((image, index) => (
+                            <div
+                              key={image.id}
+                              className="w-8 h-8 rounded border border-gray-200 overflow-hidden cursor-pointer hover:opacity-75"
+                              title={`Image ${index + 1}`}
+                              onClick={() => window.open(image.url, '_blank')}
+                            >
+                              <img
+                                src={image.url}
+                                alt={`Order image ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ))}
+                          {order.images.length > 2 && (
+                            <div className="w-8 h-8 rounded border border-gray-200 bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+                              +{order.images.length - 2}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No images</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -439,6 +469,28 @@ const OrdersPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Order Images */}
+            {selectedOrder.images && selectedOrder.images.length > 0 && (
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Order Images</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedOrder.images.map((image, index) => (
+                    <div key={image.id} className="relative">
+                      <img
+                        src={image.url}
+                        alt={`Order image ${index + 1}`}
+                        className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => window.open(image.url, '_blank')}
+                      />
+                      <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                        Image {index + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Special Instructions */}
             {selectedOrder.special_instructions && (

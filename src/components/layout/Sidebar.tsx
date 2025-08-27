@@ -1,7 +1,6 @@
 import {
   Images,
   LayoutDashboard,
-  Settings,
   ShoppingBag,
   Store as StoreIcon,
   Users,
@@ -23,7 +22,6 @@ const navigation = [
   { name: 'Orders', href: '/orders', icon: ShoppingBag, roles: ['super_admin', 'admin'] },
   { name: 'Stores', href: '/stores', icon: StoreIcon, roles: ['super_admin'] },
   { name: 'Store Images', href: '/images', icon: Images, roles: ['super_admin', 'admin'] },
-  { name: 'Settings', href: '/settings', icon: Settings, roles: ['super_admin', 'admin'] },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {

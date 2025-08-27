@@ -2,7 +2,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Edit3, Mail, Plus, Shield, User } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import * as yup from 'yup';
 
 import type { CreateAdminForm, UserFilters, User as UserType } from '@/types';
@@ -42,13 +42,8 @@ const createAdminSchema = yup.object({
     .string()
     .required('Name is required')
     .min(2, 'Name must be at least 2 characters'),
-  role: yup
+  store_id: yup
     .string()
-    .oneOf(['admin', 'super_admin'], 'Invalid role')
-    .required('Role is required'),
-  store_ids: yup
-    .array()
-    .of(yup.string())
     .optional(),
 });
 
@@ -96,14 +91,13 @@ const UsersPage: React.FC = () => {
     );
   }
 
-  const { control, handleSubmit, reset, watch, formState: { errors } } = useForm<CreateAdminForm>({
+  const { control, handleSubmit, reset } = useForm<CreateAdminForm>({
     resolver: yupResolver(createAdminSchema) as any,
     defaultValues: {
       username: '',
       password: '',
       name: '',
-      role: 'admin',
-      store_ids: [],
+      store_id: '',
     },
   });
 
@@ -139,7 +133,9 @@ const UsersPage: React.FC = () => {
 
   // Create admin mutation
   const createAdminMutation = useMutation({
-    mutationFn: (data: CreateAdminForm) => apiService.createAdmin(data),
+    mutationFn: (data: CreateAdminForm) => {
+      return apiService.createAdmin(data);
+    },
     onSuccess: () => {
       log.ui.userAction('admin-created');
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -228,8 +224,11 @@ const UsersPage: React.FC = () => {
   };
 
   const onCreateAdmin = async (data: CreateAdminForm) => {
-    log.form.submit('CreateAdminForm', { username: data.username, role: data.role });
-    createAdminMutation.mutate(data);
+    log.form.submit('CreateAdminForm', { username: data.username, role: 'admin', store_id: data.store_id });
+    // Always set role to 'admin' to prevent super admin creation
+    const adminData = { ...data, role: 'admin' as const };
+    console.log('Form data being submitted:', adminData); // Debug log
+    createAdminMutation.mutate(adminData);
   };
 
   const getRoleBadgeVariant = (role: string) => {
@@ -331,7 +330,7 @@ const UsersPage: React.FC = () => {
               <TableHead>User</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Stores</TableHead>
+              <TableHead>Store</TableHead>
               <TableHead>Last Login</TableHead>
               <TableHead>Created</TableHead>
               <TableHead>Actions</TableHead>
@@ -395,21 +394,15 @@ const UsersPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm text-gray-500">
-                      {user.role === 'admin' && user.stores && user.stores.length > 0 ? (
-                        <div className="space-y-1">
-                          {user.stores.slice(0, 2).map((store) => (
-                            <div key={store.id} className="text-xs bg-gray-100 px-2 py-1 rounded">
-                              {store.name}
-                            </div>
-                          ))}
-                          {user.stores.length > 2 && (
-                            <div className="text-xs text-gray-400">
-                              +{user.stores.length - 2} more
-                            </div>
-                          )}
+                      {user.role === 'admin' && user.assigned_store ? (
+                        <div 
+                          className="text-xs bg-gray-100 px-2 py-1 rounded cursor-help"
+                          title={`Assigned on ${new Date(user.assigned_store.assigned_at).toLocaleDateString()}`}
+                        >
+                          {user.assigned_store.store_name}
                         </div>
                       ) : user.role === 'admin' ? (
-                        <span className="text-xs text-gray-400">No stores assigned</span>
+                        <span className="text-xs text-gray-400">No store assigned</span>
                       ) : (
                         <span className="text-xs text-gray-400">-</span>
                       )}
@@ -473,7 +466,7 @@ const UsersPage: React.FC = () => {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         title="Create New Admin"
-        description="Add a new administrator to the system"
+        description="Add a new administrator to the system (Single store assignment only)"
         size="md"
       >
         <form onSubmit={handleSubmit(onCreateAdmin)} className="space-y-4">
@@ -501,46 +494,38 @@ const UsersPage: React.FC = () => {
             helperText="Must be at least 8 characters"
           />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Role
-            </label>
-            <select
-              {...control.register?.('role')}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            >
-              <option value="admin">Admin</option>
-              <option value="super_admin">Super Admin</option>
-            </select>
-            {errors.role && (
-              <p className="text-sm text-red-600 mt-1">{errors.role.message}</p>
-            )}
+          {/* Info note about role and store assignment */}
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> Only Admin users can be created through this interface. Super Admin creation is restricted for security purposes. Each admin can be assigned to only one store.
+            </p>
           </div>
 
-          {/* Store Assignment - Only show for admin users */}
-          {watch('role') === 'admin' && storesData?.data && (
+          {/* Store Assignment - Single store only */}
+          {storesData?.data && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Assign to Stores
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Assign to Store
               </label>
-              <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md p-3">
-                {storesData.data.map((store) => (
-                  <label key={store.id} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      value={store.id}
-                      {...control.register?.('store_ids')}
-                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
-                    <span className="text-sm text-gray-700">{store.name}</span>
-                    {store.address && (
-                      <span className="text-xs text-gray-500">({store.address})</span>
-                    )}
-                  </label>
-                ))}
-              </div>
+              <Controller
+                name="store_id"
+                control={control}
+                render={({ field }) => (
+                  <select
+                    {...field}
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="">No store assignment</option>
+                    {storesData.data.map((store) => (
+                      <option key={store.id} value={store.id}>
+                        {store.name} {store.address && `(${store.address})`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
               <p className="text-xs text-gray-500 mt-1">
-                Select stores this admin will have access to. Leave empty for no store access.
+                Select a single store this admin will have access to. Leave empty for no store access.
               </p>
             </div>
           )}

@@ -1,17 +1,17 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-    AlertCircle,
-    Calendar,
-    CheckCircle,
-    Download,
-    Edit3,
-    Eye,
-    FileImage,
-    Image as ImageIcon,
-    Trash2,
-    Upload,
-    X
+  AlertCircle,
+  Calendar,
+  CheckCircle,
+  Download,
+  Edit3,
+  Eye,
+  FileImage,
+  Image as ImageIcon,
+  Trash2,
+  Upload,
+  X
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
@@ -19,27 +19,29 @@ import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 
 import type { StoreImage } from '@/types';
-import { formatDate, formatFileSize } from '@/utils';
+import { formatFileSize, getImageUrl } from '@/utils';
 import { FILE_UPLOAD } from '@constants';
 import { apiService } from '@services/api';
 import { log } from '@utils/logger';
 
 import {
-    Badge,
-    Button,
-    Input,
-    Modal
+  Badge,
+  Button,
+  Input,
+  Modal
 } from '@components/ui';
 
 const updateImageSchema = yup.object({
+  title: yup.string().required('Title is required'),
   description: yup.string(),
-  category: yup.string().required('Category is required'),
+  order_index: yup.number().min(0, 'Order index must be 0 or greater'),
   is_active: yup.boolean().required(),
 });
 
 interface UpdateImageForm {
+  title: string;
   description?: string;
-  category: string;
+  order_index: number;
   is_active: boolean;
 }
 
@@ -52,16 +54,16 @@ const ImagesPage: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [uploadMetadata, setUploadMetadata] = useState({
     title: '',
-    description: '',
-    category: 'general'
+    description: ''
   });
   const queryClient = useQueryClient();
 
   const { control, handleSubmit, reset } = useForm<UpdateImageForm>({
     resolver: yupResolver(updateImageSchema) as any,
     defaultValues: {
+      title: '',
       description: '',
-      category: 'general',
+      order_index: 0,
       is_active: true,
     },
   });
@@ -152,15 +154,16 @@ const ImagesPage: React.FC = () => {
     log.ui.userAction('edit-image-open', { imageId: image.id });
     setSelectedImage(image);
     reset({
+      title: image.title,
       description: image.description || '',
-      category: image.category,
+      order_index: image.order_index,
       is_active: image.is_active,
     });
     setIsEditModalOpen(true);
   };
 
   const handleDeleteImage = async (image: StoreImage) => {
-    if (!confirm(`Are you sure you want to delete "${image.filename}"?`)) return;
+    if (!confirm(`Are you sure you want to delete "${image.title}"?`)) return;
     
     log.ui.userAction('delete-image', { imageId: image.id });
     deleteMutation.mutate(image.id);
@@ -181,7 +184,6 @@ const ImagesPage: React.FC = () => {
         formData.append(fieldName, file);
         formData.append('title', uploadMetadata.title || file.name.replace(/\.[^/.]+$/, '')); // Use filename without extension as fallback
         formData.append('description', uploadMetadata.description || `Image: ${file.name}`);
-        formData.append('category', uploadMetadata.category);
 
         try {
           await uploadMutation.mutateAsync(formData);
@@ -217,8 +219,7 @@ const ImagesPage: React.FC = () => {
     setUploadProgress({});
     setUploadMetadata({
       title: '',
-      description: '',
-      category: 'general'
+      description: ''
     });
   };
 
@@ -227,28 +228,23 @@ const ImagesPage: React.FC = () => {
     
     log.form.submit('UpdateImageForm', { 
       imageId: selectedImage.id, 
-      category: data.category,
-      isActive: data.is_active 
+      title: data.title,
+      orderIndex: data.order_index,
+      isActive: data.is_active
     });
     
     updateMutation.mutate({ 
       id: selectedImage.id, 
       data: {
+        title: data.title,
         description: data.description,
-        category: data.category,
+        order_index: data.order_index,
         is_active: data.is_active,
       }
     });
   };
 
-  const getCategoryBadgeVariant = (category: string) => {
-    switch (category) {
-      case 'featured': return 'success';
-      case 'menu': return 'info';
-      case 'gallery': return 'warning';
-      default: return 'default';
-    }
-  };
+
 
   useEffect(() => {
     log.ui.componentMount('ImagesPage');
@@ -309,29 +305,43 @@ const ImagesPage: React.FC = () => {
               <div key={image.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
                 <div className="aspect-square relative bg-gray-100">
                   <img
-                    src={image.url}
-                    alt={image.description || image.filename}
+                    src={getImageUrl(image.url)}
+                    alt={image.title || image.description}
                     className="w-full h-full object-cover cursor-pointer"
                     onClick={() => handleViewImage(image)}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.parentElement!.innerHTML = `
+                        <div class="flex items-center justify-center w-full h-full text-gray-400">
+                          <div class="text-center">
+                            <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <p class="text-sm">Image not available</p>
+                          </div>
+                        </div>
+                      `;
+                    }}
                   />
                   <div className="absolute top-2 right-2">
-                    <Badge variant={image.is_active ? 'success' : 'secondary'} size="sm">
-                      {image.is_active ? 'Active' : 'Inactive'}
+                    <Badge variant="info" size="sm">
+                      Order: {image.order_index}
                     </Badge>
                   </div>
                   <div className="absolute top-2 left-2">
-                    <Badge variant={getCategoryBadgeVariant(image.category)} size="sm">
-                      {image.category}
+                    <Badge variant={image.is_active ? 'success' : 'secondary'} size="sm">
+                      {image.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
                 </div>
                 
                 <div className="p-4">
                   <h3 className="font-medium text-gray-900 truncate">
-                    {image.original_name}
+                    {image.title}
                   </h3>
                   <p className="text-sm text-gray-500 mt-1">
-                    {formatFileSize(image.size)}
+                    {image.width} × {image.height}
                   </p>
                   {image.description && (
                     <p className="text-sm text-gray-600 mt-2 line-clamp-2">
@@ -340,7 +350,7 @@ const ImagesPage: React.FC = () => {
                   )}
                   <div className="text-xs text-gray-400 mt-2 flex items-center">
                     <Calendar className="h-3 w-3 mr-1" />
-                    {formatDate(image.created_at)}
+                    Uploaded by: {image.uploader.name}
                   </div>
                   
                   <div className="flex items-center justify-between mt-4">
@@ -364,7 +374,7 @@ const ImagesPage: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => window.open(image.url, '_blank')}
+                        onClick={() => window.open(getImageUrl(image.url), '_blank')}
                         className="h-8 w-8 p-0"
                       >
                         <Download className="h-3 w-3" />
@@ -499,22 +509,7 @@ const ImagesPage: React.FC = () => {
                     Leave empty to use default description
                   </p>
                 </div>
-                <div>
-                  <label htmlFor="upload-category" className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
-                  </label>
-                  <select
-                    id="upload-category"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    value={uploadMetadata.category}
-                    onChange={(e) => setUploadMetadata(prev => ({ ...prev, category: e.target.value }))}
-                  >
-                    <option value="general">General</option>
-                    <option value="featured">Featured</option>
-                    <option value="menu">Menu</option>
-                    <option value="gallery">Gallery</option>
-                  </select>
-                </div>
+
               </div>
             </div>
           )}
@@ -541,43 +536,74 @@ const ImagesPage: React.FC = () => {
       <Modal
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
-        title={selectedImage?.original_name || 'Image'}
+        title={selectedImage?.title || 'Image'}
         size="full"
       >
         {selectedImage && (
           <div className="space-y-4">
             <div className="flex justify-center bg-gray-100 rounded-lg p-4">
               <img
-                src={selectedImage.url}
-                alt={selectedImage.description || selectedImage.filename}
+                src={getImageUrl(selectedImage.url)}
+                alt={selectedImage.title || selectedImage.description}
                 className="max-h-96 w-auto object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement!.innerHTML = `
+                    <div class="flex items-center justify-center w-full h-full text-gray-400">
+                      <div class="text-center">
+                        <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-lg font-medium">Image not available</p>
+                        <p class="text-sm text-gray-500 mt-1">The image file could not be loaded</p>
+                      </div>
+                    </div>
+                  `;
+                }}
               />
             </div>
             
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="font-medium">File Name:</span>
-                <p className="text-gray-600">{selectedImage.original_name}</p>
+                <span className="font-medium">Title:</span>
+                <p className="text-gray-600">{selectedImage.title}</p>
               </div>
               <div>
-                <span className="font-medium">Size:</span>
-                <p className="text-gray-600">{formatFileSize(selectedImage.size)}</p>
+                <span className="font-medium">Filename:</span>
+                <p className="text-gray-600">{selectedImage.filename}</p>
               </div>
               <div>
-                <span className="font-medium">Category:</span>
-                <p className="text-gray-600">{selectedImage.category}</p>
+                <span className="font-medium">Dimensions:</span>
+                <p className="text-gray-600">{selectedImage.width} × {selectedImage.height}</p>
+              </div>
+              <div>
+                <span className="font-medium">File Size:</span>
+                <p className="text-gray-600">{formatFileSize(selectedImage.file_size)}</p>
+              </div>
+              <div>
+                <span className="font-medium">Format:</span>
+                <p className="text-gray-600">{selectedImage.format.toUpperCase()}</p>
+              </div>
+              <div>
+                <span className="font-medium">Order Index:</span>
+                <p className="text-gray-600">{selectedImage.order_index}</p>
               </div>
               <div>
                 <span className="font-medium">Status:</span>
                 <p className="text-gray-600">{selectedImage.is_active ? 'Active' : 'Inactive'}</p>
               </div>
               <div>
-                <span className="font-medium">Uploaded:</span>
-                <p className="text-gray-600">{formatDate(selectedImage.created_at)}</p>
+                <span className="font-medium">Uploader:</span>
+                <p className="text-gray-600">{selectedImage.uploader.name} ({selectedImage.uploader.username})</p>
               </div>
               <div>
-                <span className="font-medium">Uploaded by:</span>
-                <p className="text-gray-600">{selectedImage.uploaded_by}</p>
+                <span className="font-medium">Created:</span>
+                <p className="text-gray-600">{new Date(selectedImage.created_at).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <span className="font-medium">Updated:</span>
+                <p className="text-gray-600">{new Date(selectedImage.updated_at).toLocaleDateString()}</p>
               </div>
             </div>
             
@@ -601,26 +627,23 @@ const ImagesPage: React.FC = () => {
       >
         <form onSubmit={handleSubmit(onUpdateImage as any)} className="space-y-4">
           <Input
+            label="Title"
+            placeholder="Enter image title..."
+            {...control.register?.('title')}
+          />
+
+          <Input
             label="Description"
             placeholder="Enter image description..."
             {...control.register?.('description')}
           />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category
-            </label>
-            <select
-              {...control.register?.('category')}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            >
-              <option value="general">General</option>
-              <option value="featured">Featured</option>
-              <option value="menu">Menu</option>
-              <option value="gallery">Gallery</option>
-              <option value="promotional">Promotional</option>
-            </select>
-          </div>
+          <Input
+            label="Order Index"
+            type="number"
+            placeholder="Enter order index..."
+            {...control.register?.('order_index')}
+          />
 
           <div className="flex items-center">
             <input
