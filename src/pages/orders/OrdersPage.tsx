@@ -1,40 +1,40 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Calendar,
-  CheckCircle,
-  ChefHat,
-  Clock,
-  DollarSign,
-  Eye,
-  MapPin,
-  MessageSquare,
-  Phone,
-  Truck,
-  XCircle
+    Calendar,
+    CheckCircle,
+    ChefHat,
+    Clock,
+    DollarSign,
+    Eye,
+    MapPin,
+    MessageSquare,
+    Phone,
+    Truck,
+    XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 
 import type { Order, OrderFilters, SendMessageForm, UpdateOrderStatusForm } from '@/types';
-import { formatCurrency, formatDate } from '@/utils';
+import { formatCurrency, formatDate, getImageUrl } from '@/utils';
 import { DEFAULTS, ORDER_STATUS, ORDER_STATUS_LABELS } from '@constants';
 import { apiService } from '@services/api';
 import { log } from '@utils/logger';
 
 import { FormField, SearchInput } from '@components/forms';
 import {
-  Badge,
-  Button,
-  Modal,
-  Pagination,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+    Badge,
+    Button,
+    Modal,
+    Pagination,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
 } from '@components/ui';
 
 const updateStatusSchema = yup.object({
@@ -72,7 +72,70 @@ const OrdersPage: React.FC = () => {
   // Fetch orders query
   const { data: ordersData, isLoading, error } = useQuery({
     queryKey: ['orders', filters],
-    queryFn: () => apiService.getOrders(filters),
+    queryFn: async () => {
+      console.log('🔍 [OrdersPage] Fetching orders with filters:', filters);
+      try {
+        const response = await apiService.getOrders(filters);
+        console.log('✅ [OrdersPage] Orders API response:', response);
+        
+        if (response.data && Array.isArray(response.data)) {
+          console.log(`📊 [OrdersPage] Found ${response.data.length} orders`);
+          
+          // Transform backend response to match frontend expectations
+          const transformedData = response.data.map(order => ({
+            ...order,
+            // Map customer data from nested object to direct fields
+            customer_name: order.customer?.name || 'Unknown Customer',
+            customer_mobile: order.customer?.mobile || order.delivery_phone || 'No Phone',
+            // Map order_items to items
+            items: order.order_items || [],
+            // Add empty arrays for missing data
+            images: order.order_images || [],
+            status_history: order.status_history || [],
+            // Transform delivery_address from string to object
+            delivery_address: typeof order.delivery_address === 'string' ? {
+              street: order.delivery_address,
+              city: '',
+              state: '',
+              zip_code: ''
+            } : order.delivery_address || {
+              street: '',
+              city: '',
+              state: '',
+              zip_code: ''
+            }
+          }));
+          
+          console.log('🔄 [OrdersPage] Transformed orders:', transformedData);
+          
+          transformedData.forEach((order, index) => {
+            console.log(`📦 [OrdersPage] Order ${index + 1}:`, {
+              id: order.id,
+              customer_name: order.customer_name,
+              has_items: !!order.items,
+              items_count: order.items?.length || 0,
+              has_images: !!order.images,
+              images_count: order.images?.length || 0,
+              has_status_history: !!order.status_history,
+              status_history_count: order.status_history?.length || 0,
+              full_order: order
+            });
+          });
+          
+          return {
+            ...response,
+            data: transformedData
+          };
+        } else {
+          console.log('⚠️ [OrdersPage] No orders data or invalid format:', response);
+        }
+        
+        return response;
+      } catch (error) {
+        console.error('❌ [OrdersPage] Error fetching orders:', error);
+        throw error;
+      }
+    },
     placeholderData: (previousData) => previousData,
   });
 
@@ -311,22 +374,22 @@ const OrdersPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                      {order.items?.length || 0} item{(order.items?.length || 0) !== 1 ? 's' : ''}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
                       {order.images && order.images.length > 0 ? (
                         <div className="flex space-x-1">
-                          {order.images.slice(0, 2).map((image, index) => (
+                          {order.images.slice(0, 2).map((image: any, index: number) => (
                             <div
                               key={image.id}
                               className="w-8 h-8 rounded border border-gray-200 overflow-hidden cursor-pointer hover:opacity-75"
                               title={`Image ${index + 1}`}
-                              onClick={() => window.open(image.url, '_blank')}
+                              onClick={() => window.open(getImageUrl(image.url), '_blank')}
                             >
                               <img
-                                src={image.url}
+                                src={getImageUrl(image.url)}
                                 alt={`Order image ${index + 1}`}
                                 className="w-full h-full object-cover"
                               />
@@ -435,10 +498,16 @@ const OrdersPage: React.FC = () => {
                   <MapPin className="h-4 w-4 mr-2 mt-0.5" />
                   <span className="font-medium w-24">Address:</span>
                   <div>
-                    <div>{selectedOrder.delivery_address.street}</div>
-                    <div>{selectedOrder.delivery_address.city}, {selectedOrder.delivery_address.state} {selectedOrder.delivery_address.zip_code}</div>
-                    {selectedOrder.delivery_address.landmark && (
-                      <div className="text-sm text-gray-600">Landmark: {selectedOrder.delivery_address.landmark}</div>
+                    {typeof selectedOrder.delivery_address === 'string' ? (
+                      <div>{selectedOrder.delivery_address}</div>
+                    ) : (
+                      <>
+                        <div>{selectedOrder.delivery_address.street}</div>
+                        <div>{selectedOrder.delivery_address.city}, {selectedOrder.delivery_address.state} {selectedOrder.delivery_address.zip_code}</div>
+                        {selectedOrder.delivery_address.landmark && (
+                          <div className="text-sm text-gray-600">Landmark: {selectedOrder.delivery_address.landmark}</div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -449,18 +518,20 @@ const OrdersPage: React.FC = () => {
             <div>
               <h4 className="text-lg font-medium text-gray-900 mb-3">Order Items</h4>
               <div className="space-y-2">
-                {selectedOrder.items.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-sm text-gray-600">Qty: {item.quantity}</div>
-                      {item.notes && (
-                        <div className="text-sm text-gray-500">Note: {item.notes}</div>
-                      )}
+                {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                  selectedOrder.items.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-sm text-gray-600">Qty: {item.quantity}</div>
+                      </div>
                     </div>
-                    <div className="font-medium">{formatCurrency(item.price * item.quantity)}</div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    No items found for this order
                   </div>
-                ))}
+                )}
                 <div className="border-t pt-2 mt-4">
                   <div className="flex justify-between items-center text-lg font-bold">
                     <span>Total:</span>
@@ -478,10 +549,10 @@ const OrdersPage: React.FC = () => {
                   {selectedOrder.images.map((image, index) => (
                     <div key={image.id} className="relative">
                       <img
-                        src={image.url}
+                        src={getImageUrl(image.url)}
                         alt={`Order image ${index + 1}`}
                         className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={() => window.open(image.url, '_blank')}
+                        onClick={() => window.open(getImageUrl(image.url), '_blank')}
                       />
                       <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
                         Image {index + 1}
@@ -516,20 +587,26 @@ const OrdersPage: React.FC = () => {
             <div>
               <h4 className="text-lg font-medium text-gray-900 mb-3">Status History</h4>
               <div className="space-y-2">
-                {selectedOrder.status_history.map((history, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <div className="font-medium">{ORDER_STATUS_LABELS[history.status as keyof typeof ORDER_STATUS_LABELS]}</div>
-                      {history.note && (
-                        <div className="text-sm text-gray-600">{history.note}</div>
-                      )}
-                      <div className="text-xs text-gray-500">by {history.created_by}</div>
+                {selectedOrder.status_history && selectedOrder.status_history.length > 0 ? (
+                  selectedOrder.status_history.map((history, index) => (
+                    <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="font-medium">{ORDER_STATUS_LABELS[history.status as keyof typeof ORDER_STATUS_LABELS]}</div>
+                        {history.note && (
+                          <div className="text-sm text-gray-600">{history.note}</div>
+                        )}
+                        <div className="text-xs text-gray-500">by {history.created_by}</div>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {formatDate(history.created_at)}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      {formatDate(history.created_at)}
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    No status history available
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proxy Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-image { max-width: 300px; margin: 10px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>Supabase Storage Proxy Test</h1>
+    
+    <div id="results"></div>
+    
+    <h2>Test Images:</h2>
+    <div id="images"></div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+        const imagesDiv = document.getElementById('images');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(div);
+        }
+
+        // Test images with their expected proxy URLs
+        const testImages = [
+            {
+                id: '873f61e4-2457-4ebe-974d-183b4de6fdf7',
+                title: 'Front desk',
+                originalUrl: 'https://fitobjouvvxbpqdcgxvg.supabase.co/storage/v1/object/public/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png',
+                proxyUrl: 'https://bm-ecommerce-api-production.up.railway.app/api/proxy/supabase-storage/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png'
+            },
+            {
+                id: 'e46cb763-5b8e-4c28-aab5-4b7bb6ff9662',
+                title: 'Front desk 2',
+                originalUrl: 'https://fitobjouvvxbpqdcgxvg.supabase.co/storage/v1/object/public/Beena%20Stores/Store%20Images/1756649548825-56c926686f6d103a.png',
+                proxyUrl: 'https://bm-ecommerce-api-production.up.railway.app/api/proxy/supabase-storage/Beena%20Stores/Store%20Images/1756649548825-56c926686f6d103a.png'
+            }
+        ];
+
+        function testProxyEndpoint(image) {
+            log(`Testing proxy endpoint for: ${image.title}`, 'info');
+            log(`Proxy URL: ${image.proxyUrl}`, 'info');
+
+            // Test the proxy endpoint
+            fetch(image.proxyUrl, { method: 'HEAD' })
+                .then(response => {
+                    log(`Proxy HEAD response: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                    if (response.ok) {
+                        log(`Content-Type: ${response.headers.get('content-type')}`, 'success');
+                        log(`Content-Length: ${response.headers.get('content-length')}`, 'success');
+                        log(`CORS Headers: ${response.headers.get('access-control-allow-origin')}`, 'success');
+                    } else {
+                        log(`This is expected - proxy endpoint not implemented yet`, 'warning');
+                    }
+                })
+                .catch(error => {
+                    log(`Proxy fetch error: ${error.message}`, 'error');
+                    log(`This is expected - proxy endpoint not implemented yet`, 'warning');
+                });
+
+            // Create img element to test loading
+            const img = document.createElement('img');
+            img.className = 'test-image';
+            img.alt = `${image.title} (Proxy)`;
+            
+            img.onload = () => {
+                log(`✅ Proxy image loaded successfully: ${image.title}`, 'success');
+            };
+            
+            img.onerror = () => {
+                log(`❌ Proxy image failed to load: ${image.title}`, 'error');
+                log(`This is expected - proxy endpoint not implemented yet`, 'warning');
+            };
+
+            img.src = image.proxyUrl;
+            imagesDiv.appendChild(img);
+        }
+
+        function testOriginalUrl(image) {
+            log(`Testing original URL for: ${image.title}`, 'info');
+            log(`Original URL: ${image.originalUrl}`, 'info');
+
+            // Test the original URL
+            fetch(image.originalUrl, { method: 'HEAD' })
+                .then(response => {
+                    log(`Original HEAD response: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                    if (!response.ok) {
+                        log(`This confirms the CORS issue`, 'warning');
+                    }
+                })
+                .catch(error => {
+                    log(`Original fetch error: ${error.message}`, 'error');
+                    log(`This confirms the CORS issue`, 'warning');
+                });
+
+            // Create img element to test loading
+            const img = document.createElement('img');
+            img.className = 'test-image';
+            img.alt = `${image.title} (Original)`;
+            
+            img.onload = () => {
+                log(`✅ Original image loaded successfully: ${image.title}`, 'success');
+            };
+            
+            img.onerror = () => {
+                log(`❌ Original image failed to load: ${image.title}`, 'error');
+                log(`This confirms the CORS issue`, 'warning');
+            };
+
+            img.src = image.originalUrl;
+            imagesDiv.appendChild(img);
+        }
+
+        // Run tests
+        log('Starting proxy tests...', 'info');
+        log('Note: Proxy endpoints are not implemented yet, so these will fail', 'warning');
+        
+        testImages.forEach(image => {
+            log('---', 'info');
+            testOriginalUrl(image);
+            testProxyEndpoint(image);
+        });
+
+        log('---', 'info');
+        log('Test completed. Implement the proxy endpoint in your backend to fix the CORS issue.', 'info');
+    </script>
+</body>
+</html>

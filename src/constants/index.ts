@@ -2,7 +2,7 @@
 
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'http://localhost:3000'),
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || '',
   TIMEOUT: 10000,
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
@@ -111,6 +111,7 @@ export const ORDER_STATUS = {
   READY: 'ready',
   DELIVERED: 'delivered',
   CANCELLED: 'cancelled',
+  SUBMITTED: 'submitted',
 } as const;
 
 // Order Status Labels (for display)
@@ -121,6 +122,7 @@ export const ORDER_STATUS_LABELS = {
   [ORDER_STATUS.READY]: 'Ready',
   [ORDER_STATUS.DELIVERED]: 'Delivered',
   [ORDER_STATUS.CANCELLED]: 'Cancelled',
+  [ORDER_STATUS.SUBMITTED]: 'Submitted',
 } as const;
 
 // Form Validation Rules

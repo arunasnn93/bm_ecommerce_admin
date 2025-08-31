@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { margin: 10px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; }
+        .error { color: #d32f2f; }
+        .success { color: #388e3c; }
+        .info { color: #1976d2; }
+        .warning { color: #f57c00; }
+        .debug { background: #f5f5f5; padding: 10px; margin: 10px 0; border-left: 4px solid #007bff; }
+        .image-test { display: inline-block; margin: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .image-test img { max-width: 200px; max-height: 200px; object-fit: cover; }
+        .order-test { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; background: #fff; }
+        .order-test h4 { margin: 0 0 10px 0; color: #333; }
+        .order-test .field { margin: 5px 0; }
+        .order-test .field-name { font-weight: bold; color: #666; }
+        .order-test .field-value { color: #333; }
+        .missing { color: #f57c00; }
+        .present { color: #388e3c; }
+    </style>
+</head>
+<body>
+    <h1>BM Admin API Test</h1>
+    <p><strong>Current Origin:</strong> <span id="current-origin"></span></p>
+    <p><strong>Status:</strong> <span id="status">Testing...</span></p>
+    
+    <button onclick="testCorsPreflight()">Test CORS Preflight (OPTIONS)</button>
+    <button onclick="testHealth()">Test Health Endpoint</button>
+    <button onclick="testLogin()">Test Login Endpoint</button>
+    <button onclick="testLoginWithValidData()">Test Login (Valid Data)</button>
+    <button onclick="testFrontendConnection()">Test Frontend Connection</button>
+    <button onclick="testDetailedRequest()">Test Detailed Request (Debug)</button>
+    <button onclick="testRealCredentials()">Test Real Credentials</button>
+    <button onclick="testUrlComparison()">Test URL Comparison</button>
+    <button onclick="testStoreImages()">Test Store Images</button>
+    <button onclick="testOrders()">Test Orders API</button>
+    
+    <div id="result"></div>
+
+    <script>
+        const API_BASE = 'https://bm-ecommerce-api-production.up.railway.app';
+        let authToken = null;
+        
+        // Show current origin
+        document.getElementById('current-origin').textContent = window.location.origin;
+        
+        function displayResult(title, status, response, isError = false) {
+            const className = isError ? 'error' : (status >= 200 && status < 300 ? 'success' : 'info');
+            document.getElementById('result').innerHTML = `
+                <h3 class="${className}">${title}:</h3>
+                <p><strong>Status:</strong> ${status}</p>
+                <p><strong>Response:</strong></p>
+                <pre>${JSON.stringify(response, null, 2)}</pre>
+            `;
+        }
+        
+        function displayDebugResult(title, requestDetails, responseDetails, isError = false) {
+            const className = isError ? 'error' : 'info';
+            document.getElementById('result').innerHTML = `
+                <h3 class="${className}">${title}:</h3>
+                
+                <div class="debug">
+                    <h4>Request Details:</h4>
+                    <p><strong>Method:</strong> ${requestDetails.method}</p>
+                    <p><strong>URL:</strong> ${requestDetails.url}</p>
+                    <p><strong>Headers:</strong></p>
+                    <pre>${JSON.stringify(requestDetails.headers, null, 2)}</pre>
+                    <p><strong>Body:</strong></p>
+                    <pre>${JSON.stringify(requestDetails.body, null, 2)}</pre>
+                </div>
+                
+                <div class="debug">
+                    <h4>Response Details:</h4>
+                    <p><strong>Status:</strong> ${responseDetails.status}</p>
+                    <p><strong>Status Text:</strong> ${responseDetails.statusText}</p>
+                    <p><strong>Headers:</strong></p>
+                    <pre>${JSON.stringify(responseDetails.headers, null, 2)}</pre>
+                    <p><strong>Body:</strong></p>
+                    <pre>${JSON.stringify(responseDetails.body, null, 2)}</pre>
+                </div>
+            `;
+        }
+        
+        // Construct full image URL (same as frontend)
+        function getImageUrl(imagePath) {
+            if (!imagePath) return '';
+            
+            // If it's already a full URL, return as is
+            if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+                return imagePath;
+            }
+            
+            // Get the API base URL with fallbacks
+            const baseUrl = API_BASE;
+            
+            // If it starts with /, it's a relative path, prepend the API base URL
+            if (imagePath.startsWith('/')) {
+                return `${baseUrl}${imagePath}`;
+            }
+            
+            // Otherwise, assume it's a relative path and prepend the API base URL
+            return `${baseUrl}/${imagePath}`;
+        }
+        
+        async function testOrders() {
+            try {
+                // First, we need to login to get authentication
+                if (!authToken) {
+                    const loginResponse = await fetch(`${API_BASE}/auth/admin-login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            username: 'superadmin',
+                            password: '#SlowCheetah1993'
+                        })
+                    });
+                    
+                    if (loginResponse.ok) {
+                        const loginData = await loginResponse.json();
+                        if (loginData.success && loginData.data && loginData.data.token) {
+                            authToken = loginData.data.token;
+                        }
+                    }
+                }
+                
+                // Now fetch orders
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                };
+                
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                
+                const response = await fetch(`${API_BASE}/api/orders?limit=5`, {
+                    method: 'GET',
+                    headers: headers,
+                    credentials: 'include',
+                });
+                
+                const responseText = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch {
+                    responseData = responseText;
+                }
+                
+                let resultHtml = `
+                    <h3 class="${response.status >= 400 ? 'error' : 'success'}">Orders API Test:</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(responseData, null, 2)}</pre>
+                `;
+                
+                // Analyze the response structure
+                if (responseData.data && Array.isArray(responseData.data) && responseData.data.length > 0) {
+                    resultHtml += '<h4>Order Structure Analysis:</h4>';
+                    
+                    responseData.data.forEach((order, index) => {
+                        resultHtml += `
+                            <div class="order-test">
+                                <h4>Order ${index + 1}: ${order.id}</h4>
+                                <div class="field">
+                                    <span class="field-name">Customer Name:</span>
+                                    <span class="field-value ${order.customer_name ? 'present' : 'missing'}">${order.customer_name || 'MISSING'}</span>
+                                </div>
+                                <div class="field">
+                                    <span class="field-name">Customer Mobile:</span>
+                                    <span class="field-value ${order.customer_mobile ? 'present' : 'missing'}">${order.customer_mobile || 'MISSING'}</span>
+                                </div>
+                                <div class="field">
+                                    <span class="field-name">Total Amount:</span>
+                                    <span class="field-value ${order.total_amount ? 'present' : 'missing'}">${order.total_amount || 'MISSING'}</span>
+                                </div>
+                                <div class="field">
+                                    <span class="field-name">Status:</span>
+                                    <span class="field-value ${order.status ? 'present' : 'missing'}">${order.status || 'MISSING'}</span>
+                                </div>
+                                <div class="field">
+                                    <span class="field-name">Items Array:</span>
+                                    <span class="field-value ${order.items ? 'present' : 'missing'}">${order.items ? `Present (${order.items.length} items)` : 'MISSING'}</span>
+                                </div>
+                                <div class="field">
+                                    <span class="field-name">Images Array:</span>
+                                    <span class="field-value ${order.images ? 'present' : 'missing'}">${order.images ? `Present (${order.images.length} images)` : 'MISSING'}</span>
+                                </div>
+                                <div class="field">
+                                    <span class="field-name">Status History:</span>
+                                    <span class="field-value ${order.status_history ? 'present' : 'missing'}">${order.status_history ? `Present (${order.status_history.length} entries)` : 'MISSING'}</span>
+                                </div>
+                                <div class="field">
+                                    <span class="field-name">Delivery Address:</span>
+                                    <span class="field-value ${order.delivery_address ? 'present' : 'missing'}">${order.delivery_address ? 'Present' : 'MISSING'}</span>
+                                </div>
+                                <div class="field">
+                                    <span class="field-name">Created At:</span>
+                                    <span class="field-value ${order.created_at ? 'present' : 'missing'}">${order.created_at || 'MISSING'}</span>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Show items details if present
+                        if (order.items && order.items.length > 0) {
+                            resultHtml += `
+                                <div class="order-test">
+                                    <h5>Items for Order ${order.id}:</h5>
+                                    ${order.items.map((item, itemIndex) => `
+                                        <div class="field">
+                                            <span class="field-name">Item ${itemIndex + 1}:</span>
+                                            <span class="field-value">${item.name} - Qty: ${item.quantity} - Price: $${item.price}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `;
+                        }
+                        
+                        // Show images details if present
+                        if (order.images && order.images.length > 0) {
+                            resultHtml += `
+                                <div class="order-test">
+                                    <h5>Images for Order ${order.id}:</h5>
+                                    ${order.images.map((image, imageIndex) => `
+                                        <div class="field">
+                                            <span class="field-name">Image ${imageIndex + 1}:</span>
+                                            <span class="field-value">${image.filename} - URL: ${image.url}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `;
+                        }
+                    });
+                } else {
+                    resultHtml += '<p><em>No orders found in response</em></p>';
+                }
+                
+                document.getElementById('result').innerHTML = resultHtml;
+                
+                if (response.status === 200 && responseData.success) {
+                    document.getElementById('status').innerHTML = '<span class="success">✅ Orders API working!</span>';
+                } else {
+                    document.getElementById('status').innerHTML = '<span class="warning">⚠️ Orders API issue</span>';
+                }
+                
+            } catch (error) {
+                displayResult('Orders Test Error', 'ERROR', {
+                    message: error.message,
+                    stack: error.stack,
+                    type: error.type
+                }, true);
+            }
+        }
+        
+        async function testStoreImages() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/store-images`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'include',
+                });
+                
+                const responseText = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch {
+                    responseData = responseText;
+                }
+                
+                let resultHtml = `
+                    <h3 class="${response.status >= 400 ? 'error' : 'success'}">Store Images Test:</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(responseData, null, 2)}</pre>
+                `;
+                
+                // If we have images, test displaying them
+                if (responseData.data && Array.isArray(responseData.data) && responseData.data.length > 0) {
+                    resultHtml += '<h4>Image Display Test:</h4>';
+                    responseData.data.forEach((image, index) => {
+                        const originalUrl = image.url;
+                        const processedUrl = getImageUrl(image.url);
+                        
+                        resultHtml += `
+                            <div class="image-test">
+                                <h5>Image ${index + 1}: ${image.title || image.filename}</h5>
+                                <p><strong>Original URL:</strong> ${originalUrl}</p>
+                                <p><strong>Processed URL:</strong> ${processedUrl}</p>
+                                <img src="${processedUrl}" alt="Test ${index + 1}" onerror="this.style.border='2px solid red'; this.alt='Failed to load'; this.parentElement.innerHTML += '<p style=color:red>❌ Failed to load image</p>'" onload="this.style.border='2px solid green'; this.alt='Image loaded'; this.parentElement.innerHTML += '<p style=color:green>✅ Image loaded successfully</p>'">
+                            </div>
+                        `;
+                    });
+                } else {
+                    resultHtml += '<p><em>No images found in response</em></p>';
+                }
+                
+                document.getElementById('result').innerHTML = resultHtml;
+                
+                if (response.status === 200 && responseData.success) {
+                    document.getElementById('status').innerHTML = '<span class="success">✅ Store images API working!</span>';
+                } else {
+                    document.getElementById('status').innerHTML = '<span class="warning">⚠️ Store images API issue</span>';
+                }
+                
+            } catch (error) {
+                displayResult('Store Images Test Error', 'ERROR', {
+                    message: error.message,
+                    stack: error.stack,
+                    type: error.type
+                }, true);
+            }
+        }
+        
+        async function testUrlComparison() {
+            const expectedUrl = 'https://bm-ecommerce-api-production.up.railway.app/auth/admin-login';
+            const currentUrl = `${window.location.origin}/auth/admin-login`;
+            
+            const comparison = {
+                expected: {
+                    full: expectedUrl,
+                    base: 'https://bm-ecommerce-api-production.up.railway.app',
+                    endpoint: '/auth/admin-login'
+                },
+                current: {
+                    full: currentUrl,
+                    base: window.location.origin,
+                    endpoint: '/auth/admin-login'
+                },
+                issue: currentUrl === expectedUrl ? 'None - URLs match' : 'URLs do not match!'
+            };
+            
+            displayResult('URL Comparison Test', 'INFO', comparison, false);
+            
+            if (comparison.issue !== 'None - URLs match') {
+                document.getElementById('status').innerHTML = '<span class="error">❌ URL mismatch detected!</span>';
+            } else {
+                document.getElementById('status').innerHTML = '<span class="success">✅ URLs match correctly</span>';
+            }
+        }
+        
+        async function testCorsPreflight() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/admin-login`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                const responseText = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch {
+                    responseData = responseText;
+                }
+                
+                displayResult(
+                    'CORS Preflight Test (OPTIONS)', 
+                    response.status, 
+                    {
+                        headers: Object.fromEntries(response.headers.entries()),
+                        body: responseData
+                    },
+                    response.status >= 400
+                );
+                
+                if (response.status === 204) {
+                    document.getElementById('status').innerHTML = '<span class="success">✅ CORS is working!</span>';
+                }
+            } catch (error) {
+                displayResult('CORS Preflight Test Error', 'ERROR', error.message, true);
+                document.getElementById('status').innerHTML = '<span class="error">❌ CORS still failing</span>';
+            }
+        }
+        
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(data);
+                } catch {
+                    responseData = data;
+                }
+                displayResult('Health Test', response.status, responseData, response.status >= 400);
+            } catch (error) {
+                displayResult('Health Test Error', 'ERROR', error.message, true);
+            }
+        }
+        
+        async function testLogin() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/admin-login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'test',
+                        password: 'test'
+                    })
+                });
+                const data = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(data);
+                } catch {
+                    responseData = data;
+                }
+                displayResult('Login Test (Invalid Data)', response.status, responseData, response.status >= 400);
+            } catch (error) {
+                displayResult('Login Test Error', 'ERROR', error.message, true);
+            }
+        }
+        
+        async function testLoginWithValidData() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/admin-login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'test',
+                        password: 'test123456' // Valid password length
+                    })
+                });
+                const data = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(data);
+                } catch {
+                    responseData = data;
+                }
+                displayResult('Login Test (Valid Data)', response.status, responseData, response.status >= 400);
+            } catch (error) {
+                displayResult('Login Test Error', 'ERROR', error.message, true);
+            }
+        }
+        
+        async function testFrontendConnection() {
+            try {
+                // Test the exact same request the frontend would make
+                const response = await fetch(`${API_BASE}/auth/admin-login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'include', // Include cookies if any
+                    body: JSON.stringify({
+                        username: 'test',
+                        password: 'test123456'
+                    })
+                });
+                
+                const data = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(data);
+                } catch {
+                    responseData = data;
+                }
+                
+                displayResult(
+                    'Frontend Connection Test', 
+                    response.status, 
+                    {
+                        headers: Object.fromEntries(response.headers.entries()),
+                        body: responseData,
+                        corsWorking: response.headers.get('access-control-allow-origin') !== null
+                    },
+                    response.status >= 400
+                );
+                
+                if (response.status === 500 && responseData.error?.message === 'Invalid credentials') {
+                    document.getElementById('status').innerHTML = '<span class="success">✅ Frontend can connect! (500 is expected for invalid credentials)</span>';
+                } else if (response.status >= 200 && response.status < 300) {
+                    document.getElementById('status').innerHTML = '<span class="success">✅ Frontend can connect!</span>';
+                } else {
+                    document.getElementById('status').innerHTML = '<span class="warning">⚠️ Connection working but unexpected response</span>';
+                }
+            } catch (error) {
+                displayResult('Frontend Connection Test Error', 'ERROR', error.message, true);
+                document.getElementById('status').innerHTML = '<span class="error">❌ Frontend cannot connect</span>';
+            }
+        }
+        
+        async function testDetailedRequest() {
+            try {
+                const requestBody = {
+                    username: 'admin',
+                    password: 'admin123'
+                };
+                
+                const requestHeaders = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'User-Agent': navigator.userAgent
+                };
+                
+                console.log('Making request with:', {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/admin-login`,
+                    headers: requestHeaders,
+                    body: requestBody
+                });
+                
+                const response = await fetch(`${API_BASE}/auth/admin-login`, {
+                    method: 'POST',
+                    headers: requestHeaders,
+                    credentials: 'include',
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const responseText = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch {
+                    responseData = responseText;
+                }
+                
+                const requestDetails = {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/admin-login`,
+                    headers: requestHeaders,
+                    body: requestBody
+                };
+                
+                const responseDetails = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    body: responseData
+                };
+                
+                displayDebugResult(
+                    'Detailed Request Test', 
+                    requestDetails, 
+                    responseDetails, 
+                    response.status >= 400
+                );
+                
+                console.log('Response received:', responseDetails);
+                
+            } catch (error) {
+                displayResult('Detailed Request Test Error', 'ERROR', {
+                    message: error.message,
+                    stack: error.stack,
+                    type: error.type
+                }, true);
+            }
+        }
+        
+        async function testRealCredentials() {
+            try {
+                const requestBody = {
+                    username: 'superadmin',
+                    password: '#SlowCheetah1993'
+                };
+                
+                const requestHeaders = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'User-Agent': navigator.userAgent
+                };
+                
+                console.log('Making request with real credentials:', {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/admin-login`,
+                    headers: requestHeaders,
+                    body: { ...requestBody, password: '***' } // Hide password in log
+                });
+                
+                const response = await fetch(`${API_BASE}/auth/admin-login`, {
+                    method: 'POST',
+                    headers: requestHeaders,
+                    credentials: 'include',
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const responseText = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch {
+                    responseData = responseText;
+                }
+                
+                const requestDetails = {
+                    method: 'POST',
+                    url: `${API_BASE}/auth/admin-login`,
+                    headers: requestHeaders,
+                    body: { ...requestBody, password: '***' } // Hide password in display
+                };
+                
+                const responseDetails = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    body: responseData
+                };
+                
+                displayDebugResult(
+                    'Real Credentials Test', 
+                    requestDetails, 
+                    responseDetails, 
+                    response.status >= 400
+                );
+                
+                if (response.status === 200 && responseData.success) {
+                    document.getElementById('status').innerHTML = '<span class="success">✅ Login successful with real credentials!</span>';
+                } else {
+                    document.getElementById('status').innerHTML = '<span class="warning">⚠️ Login failed with real credentials</span>';
+                }
+                
+                console.log('Response received:', responseDetails);
+                
+            } catch (error) {
+                displayResult('Real Credentials Test Error', 'ERROR', {
+                    message: error.message,
+                    stack: error.stack,
+                    type: error.type
+                }, true);
+            }
+        }
+        
+        // Auto-run CORS test on page load
+        window.addEventListener('load', () => {
+            testCorsPreflight();
+            testUrlComparison();
+        });
+    </script>
+</body>
+</html>

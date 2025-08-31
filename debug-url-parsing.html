@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Parsing Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Supabase URL Parsing Debug</h1>
+    
+    <div id="results"></div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(div);
+        }
+
+        function debugUrlParsing(imagePath) {
+            log(`🔍 Debugging URL: ${imagePath}`, 'info');
+            
+            try {
+                const url = new URL(imagePath);
+                const pathParts = url.pathname.split('/');
+                
+                log(`Path parts: ${JSON.stringify(pathParts)}`, 'info');
+                
+                // Find the storage path (everything after /storage/v1/object/public/)
+                const storageIndex = pathParts.findIndex(part => part === 'public');
+                log(`Storage index: ${storageIndex}`, 'info');
+                
+                if (storageIndex !== -1 && storageIndex < pathParts.length - 1) {
+                    const storagePath = pathParts.slice(storageIndex + 1).join('/');
+                    const bucketName = pathParts[storageIndex - 1]; // The bucket name is before 'public'
+                    
+                    log(`Bucket name: ${bucketName}`, 'success');
+                    log(`Storage path: ${storagePath}`, 'success');
+                    
+                    // Test different base URLs
+                    const baseUrls = [
+                        'http://localhost:3000',
+                        'https://bm-ecommerce-api-production.up.railway.app'
+                    ];
+                    
+                    baseUrls.forEach(baseUrl => {
+                        const finalUrl = `${baseUrl}/api/proxy/supabase-storage/${bucketName}/${encodeURIComponent(storagePath)}`;
+                        log(`Final URL (${baseUrl}): ${finalUrl}`, 'info');
+                    });
+                    
+                } else {
+                    log(`❌ Could not find 'public' in path parts`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Error parsing URL: ${error.message}`, 'error');
+            }
+        }
+
+        // Test with the actual URLs from the logs
+        const testUrls = [
+            'https://fitobjouvvxbpqdcgxvg.supabase.co/storage/v1/object/public/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png',
+            'https://fitobjouvvxbpqdcgxvg.supabase.co/storage/v1/object/public/Beena%20Stores/Store%20Images/1756649548825-56c926686f6d103a.png'
+        ];
+
+        testUrls.forEach((url, index) => {
+            log(`--- Test ${index + 1} ---`, 'info');
+            debugUrlParsing(url);
+            log('', 'info');
+        });
+    </script>
+</body>
+</html>

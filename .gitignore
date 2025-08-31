@@ -29,3 +29,4 @@ dist-ssr
 *.log
 debug.log
 .chrome-debug-profile/*
+.vercel

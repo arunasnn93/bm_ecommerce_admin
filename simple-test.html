@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { margin: 10px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; white-space: pre-wrap; }
+        .error { color: #d32f2f; }
+        .success { color: #388e3c; }
+        .info { color: #1976d2; }
+    </style>
+</head>
+<body>
+    <h1>Simple API Test</h1>
+    
+    <button onclick="testLogin()">1. Test Login</button>
+    <button onclick="testOrders()">2. Test Orders (after login)</button>
+    <button onclick="clearResult()">Clear Results</button>
+    
+    <div id="result">Click "Test Login" first, then "Test Orders"</div>
+
+    <script>
+        const API_BASE = 'https://bm-ecommerce-api-production.up.railway.app';
+        let authToken = null;
+        let cookies = null;
+        
+        function log(message, type = 'info') {
+            const result = document.getElementById('result');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            result.innerHTML += `[${timestamp}] <span class="${className}">${message}</span>\n`;
+            result.scrollTop = result.scrollHeight;
+        }
+        
+        function clearResult() {
+            document.getElementById('result').innerHTML = '';
+        }
+        
+        async function testLogin() {
+            try {
+                log('Starting login test...');
+                
+                const response = await fetch(`${API_BASE}/auth/admin-login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        username: 'superadmin',
+                        password: '#SlowCheetah1993'
+                    })
+                });
+                
+                log(`Login response status: ${response.status}`);
+                
+                const responseText = await response.text();
+                log(`Login response text: ${responseText}`);
+                
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch (e) {
+                    log(`Failed to parse JSON: ${e.message}`, 'error');
+                    return;
+                }
+                
+                log(`Login response data: ${JSON.stringify(responseData, null, 2)}`);
+                
+                if (response.status === 200 && responseData.success) {
+                    log('✅ Login successful!', 'success');
+                    
+                    // Try to get token from response
+                    if (responseData.data && responseData.data.token) {
+                        authToken = responseData.data.token;
+                        log(`Auth token received: ${authToken.substring(0, 20)}...`, 'success');
+                    } else {
+                        log('⚠️ No token in response, but login was successful', 'info');
+                    }
+                    
+                    // Check for cookies
+                    const allCookies = document.cookie;
+                    log(`Cookies: ${allCookies || 'No cookies'}`);
+                    
+                } else {
+                    log(`❌ Login failed: ${responseData.error?.message || 'Unknown error'}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Login error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testOrders() {
+            try {
+                log('Starting orders test...');
+                
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                };
+                
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                    log(`Using Bearer token: ${authToken.substring(0, 20)}...`);
+                } else {
+                    log('⚠️ No auth token available, trying without authentication');
+                }
+                
+                const response = await fetch(`${API_BASE}/api/orders?limit=2`, {
+                    method: 'GET',
+                    headers: headers,
+                    credentials: 'include',
+                });
+                
+                log(`Orders response status: ${response.status}`);
+                
+                const responseText = await response.text();
+                log(`Orders response text: ${responseText}`);
+                
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch (e) {
+                    log(`Failed to parse JSON: ${e.message}`, 'error');
+                    return;
+                }
+                
+                log(`Orders response data: ${JSON.stringify(responseData, null, 2)}`);
+                
+                if (response.status === 200 && responseData.success) {
+                    log('✅ Orders API working!', 'success');
+                    
+                    if (responseData.data && Array.isArray(responseData.data)) {
+                        log(`Found ${responseData.data.length} orders`, 'success');
+                        
+                        responseData.data.forEach((order, index) => {
+                            log(`Order ${index + 1}: ${order.id}`, 'info');
+                            log(`  - Customer: ${order.customer_name}`, 'info');
+                            log(`  - Items: ${order.items ? order.items.length : 'MISSING'}`, order.items ? 'success' : 'error');
+                            log(`  - Images: ${order.images ? order.images.length : 'MISSING'}`, order.images ? 'success' : 'error');
+                            log(`  - Status History: ${order.status_history ? order.status_history.length : 'MISSING'}`, order.status_history ? 'success' : 'error');
+                        });
+                    } else {
+                        log('⚠️ No orders data in response', 'info');
+                    }
+                    
+                } else {
+                    log(`❌ Orders API failed: ${responseData.error?.message || 'Unknown error'}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Orders error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

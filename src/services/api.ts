@@ -1,23 +1,23 @@
 import type {
-  ApiResponse,
-  AuthResponse,
-  CreateAdminForm,
-  CreateStoreForm,
-  DashboardStats,
-  LoginCredentials,
-  Order,
-  OrderFilters,
-  OrderImage,
-  PaginatedResponse,
-  SendMessageForm,
-  Store,
-  StoreFilters,
-  StoreImage,
-  UpdateOrderPriceForm,
-  UpdateOrderStatusForm,
-  UpdateStoreForm,
-  User,
-  UserFilters
+    ApiResponse,
+    AuthResponse,
+    CreateAdminForm,
+    CreateStoreForm,
+    DashboardStats,
+    LoginCredentials,
+    Order,
+    OrderFilters,
+    OrderImage,
+    PaginatedResponse,
+    SendMessageForm,
+    Store,
+    StoreFilters,
+    StoreImage,
+    UpdateOrderPriceForm,
+    UpdateOrderStatusForm,
+    UpdateStoreForm,
+    User,
+    UserFilters
 } from '@/types';
 import { API_CONFIG, API_ENDPOINTS, AUTH_CONFIG } from '@constants';
 import { log } from '@utils/logger';
@@ -131,11 +131,33 @@ class ApiService {
 
   // Generic request method
   private async request<T>(config: AxiosRequestConfig): Promise<T> {
+    console.log('🔧 [API Request] Starting request:', {
+      method: config.method,
+      url: config.url,
+      baseURL: this.api.defaults.baseURL,
+      fullURL: `${this.api.defaults.baseURL}${config.url}`,
+      headers: config.headers,
+      data: config.data
+    });
+    
     try {
       const response: AxiosResponse<T> = await this.api(config);
+      console.log('✅ [API Request] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data,
+        headers: response.headers
+      });
       return response.data;
     } catch (error: unknown) {
       const axiosError = error as { response?: { data: unknown } };
+      console.error('❌ [API Request] Request failed:', {
+        message: (error as any).message,
+        status: (error as any).response?.status,
+        statusText: (error as any).response?.statusText,
+        data: (error as any).response?.data,
+        config: (error as any).config
+      });
       throw axiosError.response?.data || error;
     }
   }
@@ -254,10 +276,26 @@ class ApiService {
     if (filters.date_from) params.append('date_from', filters.date_from);
     if (filters.date_to) params.append('date_to', filters.date_to);
 
-    return this.request({
+    const url = `/api/orders?${params.toString()}`;
+    console.log('🌐 [API] Making request to:', url);
+    console.log('🌐 [API] Request config:', {
       method: 'GET',
-      url: `/api/orders?${params.toString()}`,
+      url,
+      filters
     });
+
+    try {
+      const response = await this.request({
+        method: 'GET',
+        url,
+      }) as PaginatedResponse<Order>;
+      
+      console.log('✅ [API] Orders response received:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ [API] Orders request failed:', error);
+      throw error;
+    }
   }
 
   public async getOrderById(id: string): Promise<ApiResponse<Order>> {
@@ -319,10 +357,24 @@ class ApiService {
 
   // Store Image Management APIs
   public async getStoreImages(): Promise<ApiResponse<StoreImage[]>> {
-    return this.request({
+    console.log('🌐 [API] Making request to: /api/admin/store-images');
+    console.log('🌐 [API] Request config:', {
       method: 'GET',
-      url: '/api/admin/store-images',
+      url: '/api/admin/store-images'
     });
+    
+    try {
+      const response = await this.request({
+        method: 'GET',
+        url: '/api/admin/store-images',
+      }) as ApiResponse<StoreImage[]>;
+      
+      console.log('✅ [API] Store images response received:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ [API] Store images request failed:', error);
+      throw error;
+    }
   }
 
   public async uploadStoreImage(formData: FormData): Promise<ApiResponse<StoreImage>> {

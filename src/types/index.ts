@@ -61,8 +61,6 @@ export interface OrderItem {
   id: string;
   name: string;
   quantity: number;
-  price: number;
-  notes?: string;
 }
 
 export interface DeliveryAddress {
@@ -75,18 +73,30 @@ export interface DeliveryAddress {
 
 export interface Order {
   id: string;
-  customer_mobile: string;
-  customer_name: string;
-  items: OrderItem[];
+  customer_mobile?: string; // Optional since backend might not provide
+  customer_name?: string; // Optional since backend might not provide
+  customer_id?: string; // Backend provides this
+  customer?: { // Backend provides nested customer object
+    id: string;
+    name: string;
+    email: string;
+    mobile: string;
+  };
+  items?: OrderItem[]; // Optional since backend might not always return
+  order_items?: OrderItem[]; // Backend provides this field name
   total_amount: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
-  delivery_address: DeliveryAddress;
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'submitted'; // Added 'submitted'
+  delivery_address: DeliveryAddress | string; // Backend might provide string
+  delivery_phone?: string; // Backend provides this
   special_instructions?: string;
   admin_notes?: string;
+  notes?: string; // Backend provides this
   images?: OrderImage[]; // Order images (max 2)
+  order_images?: OrderImage[]; // Backend might provide this field name
   created_at: string;
   updated_at: string;
-  status_history: OrderStatusHistory[];
+  status_history?: OrderStatusHistory[]; // Optional since backend might not always return
+  store_id?: string; // Backend provides this
 }
 
 export interface OrderStatusHistory {

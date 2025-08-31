@@ -66,7 +66,7 @@ VITE_APP_ENV=development
 
 **`.env.production`**:
 ```bash
-VITE_API_BASE_URL=https://api.yourdomain.com
+VITE_API_BASE_URL=https://bm-ecommerce-api-production.up.railway.app
 VITE_APP_ENV=production
 ```
 

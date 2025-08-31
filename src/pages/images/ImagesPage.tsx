@@ -19,7 +19,7 @@ import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 
 import type { StoreImage } from '@/types';
-import { formatFileSize, getImageUrl } from '@/utils';
+import { formatFileSize, getSupabaseImageUrl } from '@/utils';
 import { FILE_UPLOAD } from '@constants';
 import { apiService } from '@services/api';
 import { log } from '@utils/logger';
@@ -71,7 +71,37 @@ const ImagesPage: React.FC = () => {
   // Fetch images query
   const { data: images = [], isLoading, error } = useQuery({
     queryKey: ['store-images'],
-    queryFn: () => apiService.getStoreImages().then(res => res.data),
+    queryFn: async () => {
+      console.log('🔍 [ImagesPage] Fetching store images...');
+      try {
+        const response = await apiService.getStoreImages();
+        console.log('✅ [ImagesPage] Store images response:', response);
+        
+        if (response.data && Array.isArray(response.data)) {
+          console.log(`📊 [ImagesPage] Found ${response.data.length} images`);
+          
+          response.data.forEach((image, index) => {
+            console.log(`🖼️ [ImagesPage] Image ${index + 1}:`, {
+              id: image.id,
+              title: image.title,
+              url: image.url,
+              has_uploader: !!image.uploader,
+              uploader_name: image.uploader?.name,
+              width: image.width,
+              height: image.height,
+              full_image: image
+            });
+          });
+        } else {
+          console.log('⚠️ [ImagesPage] No images data or invalid format:', response);
+        }
+        
+        return response.data;
+      } catch (error) {
+        console.error('❌ [ImagesPage] Error fetching store images:', error);
+        throw error;
+      }
+    },
   });
 
   // Upload mutation
@@ -305,11 +335,27 @@ const ImagesPage: React.FC = () => {
               <div key={image.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
                 <div className="aspect-square relative bg-gray-100">
                   <img
-                    src={getImageUrl(image.url)}
+                    src={getSupabaseImageUrl(image.url)}
                     alt={image.title || image.description}
                     className="w-full h-full object-cover cursor-pointer"
                     onClick={() => handleViewImage(image)}
+                    onLoad={() => {
+                      console.log('✅ [ImagesPage] Image loaded successfully:', {
+                        id: image.id,
+                        title: image.title,
+                        url: image.url,
+                        processed_url: getSupabaseImageUrl(image.url)
+                      });
+                    }}
                     onError={(e) => {
+                      console.error('❌ [ImagesPage] Image failed to load:', {
+                        id: image.id,
+                        title: image.title,
+                        url: image.url,
+                        processed_url: getSupabaseImageUrl(image.url),
+                        error: e
+                      });
+                      
                       const target = e.target as HTMLImageElement;
                       target.style.display = 'none';
                       target.parentElement!.innerHTML = `
@@ -319,6 +365,7 @@ const ImagesPage: React.FC = () => {
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
                             <p class="text-sm">Image not available</p>
+                            <p class="text-xs mt-1">CORS or storage issue</p>
                           </div>
                         </div>
                       `;
@@ -374,7 +421,7 @@ const ImagesPage: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => window.open(getImageUrl(image.url), '_blank')}
+                        onClick={() => window.open(getSupabaseImageUrl(image.url), '_blank')}
                         className="h-8 w-8 p-0"
                       >
                         <Download className="h-3 w-3" />
@@ -543,7 +590,7 @@ const ImagesPage: React.FC = () => {
           <div className="space-y-4">
             <div className="flex justify-center bg-gray-100 rounded-lg p-4">
               <img
-                src={getImageUrl(selectedImage.url)}
+                src={getSupabaseImageUrl(selectedImage.url)}
                 alt={selectedImage.title || selectedImage.description}
                 className="max-h-96 w-auto object-contain"
                 onError={(e) => {

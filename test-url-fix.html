@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>URL Parsing Fix Test</h1>
+    
+    <div id="results"></div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(div);
+        }
+
+        function testUrlParsing(imagePath) {
+            log(`🔍 Testing URL: ${imagePath}`, 'info');
+            
+            try {
+                const url = new URL(imagePath);
+                const pathParts = url.pathname.split('/');
+                
+                // Find the storage path (everything after /storage/v1/object/public/)
+                const storageIndex = pathParts.findIndex(part => part === 'public');
+                
+                if (storageIndex !== -1 && storageIndex < pathParts.length - 1) {
+                    const storagePath = pathParts.slice(storageIndex + 1).join('/');
+                    
+                    // The bucket name is the first part of the storage path
+                    const storagePathParts = storagePath.split('/');
+                    const bucketName = storagePathParts[0]; // First part is the bucket name
+                    const filePath = storagePathParts.slice(1).join('/'); // Rest is the file path
+                    
+                    // Use Railway URL
+                    const baseUrl = 'https://bm-ecommerce-api-production.up.railway.app';
+                    const finalUrl = `${baseUrl}/api/proxy/supabase-storage/${bucketName}/${encodeURIComponent(filePath)}`;
+                    
+                    log(`✅ Bucket name: ${bucketName}`, 'success');
+                    log(`✅ File path: ${filePath}`, 'success');
+                    log(`✅ Final URL: ${finalUrl}`, 'success');
+                    
+                    return { bucketName, filePath, finalUrl };
+                } else {
+                    log(`❌ Could not find 'public' in path parts`, 'error');
+                    return null;
+                }
+                
+            } catch (error) {
+                log(`❌ Error parsing URL: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // Test with the actual URLs
+        const testUrls = [
+            'https://fitobjouvvxbpqdcgxvg.supabase.co/storage/v1/object/public/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png',
+            'https://fitobjouvvxbpqdcgxvg.supabase.co/storage/v1/object/public/Beena%20Stores/Store%20Images/1756649548825-56c926686f6d103a.png'
+        ];
+
+        testUrls.forEach((url, index) => {
+            log(`--- Test ${index + 1} ---`, 'info');
+            const result = testUrlParsing(url);
+            if (result) {
+                log(`Expected bucket: Beena%20Stores, Got: ${result.bucketName}`, 
+                    result.bucketName === 'Beena%20Stores' ? 'success' : 'error');
+            }
+            log('', 'info');
+        });
+    </script>
+</body>
+</html>

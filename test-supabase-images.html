@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Storage Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-image { max-width: 300px; margin: 10px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Supabase Storage Image Test</h1>
+    
+    <div id="results"></div>
+    
+    <h2>Test Images:</h2>
+    <div id="images"></div>
+
+    <script>
+        const testImages = [
+            {
+                id: '873f61e4-2457-4ebe-974d-183b4de6fdf7',
+                title: 'Front desk',
+                url: 'https://fitobjouvvxbpqdcgxvg.supabase.co/storage/v1/object/public/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png'
+            },
+            {
+                id: 'e46cb763-5b8e-4c28-aab5-4b7bb6ff9662',
+                title: 'Front desk 2',
+                url: 'https://fitobjouvvxbpqdcgxvg.supabase.co/storage/v1/object/public/Beena%20Stores/Store%20Images/1756649548825-56c926686f6d103a.png'
+            }
+        ];
+
+        const resultsDiv = document.getElementById('results');
+        const imagesDiv = document.getElementById('images');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(div);
+        }
+
+        function testImage(image) {
+            log(`Testing image: ${image.title}`, 'info');
+            log(`URL: ${image.url}`, 'info');
+
+            // Test 1: Direct fetch
+            fetch(image.url, { method: 'HEAD' })
+                .then(response => {
+                    log(`Fetch HEAD response: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                    if (!response.ok) {
+                        log(`Headers: ${JSON.stringify([...response.headers.entries()])}`, 'error');
+                    }
+                })
+                .catch(error => {
+                    log(`Fetch error: ${error.message}`, 'error');
+                });
+
+            // Test 2: Create img element
+            const img = document.createElement('img');
+            img.className = 'test-image';
+            img.alt = image.title;
+            
+            img.onload = () => {
+                log(`✅ Image loaded successfully: ${image.title}`, 'success');
+            };
+            
+            img.onerror = (e) => {
+                log(`❌ Image failed to load: ${image.title}`, 'error');
+                log(`Error event: ${JSON.stringify(e)}`, 'error');
+            };
+
+            img.src = image.url;
+            imagesDiv.appendChild(img);
+        }
+
+        // Test URL encoding
+        function testUrlEncoding() {
+            log('Testing URL encoding...', 'info');
+            
+            const originalUrl = 'https://fitobjouvvxbpqdcgxvg.supabase.co/storage/v1/object/public/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png';
+            
+            // Decode and re-encode
+            const decodedUrl = decodeURIComponent(originalUrl);
+            log(`Decoded URL: ${decodedUrl}`, 'info');
+            
+            const url = new URL(decodedUrl);
+            const pathParts = url.pathname.split('/');
+            const encodedPathParts = pathParts.map(part => 
+                part.includes(' ') ? encodeURIComponent(part) : part
+            );
+            url.pathname = encodedPathParts.join('/');
+            
+            const processedUrl = url.toString();
+            log(`Processed URL: ${processedUrl}`, 'info');
+            
+            // Test the processed URL
+            const img = document.createElement('img');
+            img.className = 'test-image';
+            img.alt = 'Processed URL Test';
+            
+            img.onload = () => {
+                log(`✅ Processed URL loaded successfully`, 'success');
+            };
+            
+            img.onerror = () => {
+                log(`❌ Processed URL failed to load`, 'error');
+            };
+            
+            img.src = processedUrl;
+            imagesDiv.appendChild(img);
+        }
+
+        // Run tests
+        log('Starting Supabase storage tests...', 'info');
+        testUrlEncoding();
+        
+        testImages.forEach(image => {
+            testImage(image);
+        });
+    </script>
+</body>
+</html>

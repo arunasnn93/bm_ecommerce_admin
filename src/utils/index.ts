@@ -111,15 +111,78 @@ export const getImageUrl = (imagePath: string) => {
     return imagePath;
   }
   
+  // Get the API base URL with fallbacks
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 
+    (import.meta.env.DEV ? 'http://localhost:3000' : 'https://bm-ecommerce-api-production.up.railway.app');
+  
   // If it starts with /, it's a relative path, prepend the API base URL
   if (imagePath.startsWith('/')) {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
     return `${baseUrl}${imagePath}`;
   }
   
   // Otherwise, assume it's a relative path and prepend the API base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:3000' : '');
   return `${baseUrl}/${imagePath}`;
+};
+
+// Handle Supabase storage URLs with proper encoding
+export const getSupabaseImageUrl = (imagePath: string) => {
+  if (!imagePath) return '';
+  
+  // If it's already a full URL, handle Supabase storage URLs
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    // For Supabase storage URLs, proxy through backend to avoid CORS issues
+    if (imagePath.includes('supabase.co/storage')) {
+      try {
+        // Extract the storage path from the Supabase URL
+        const url = new URL(imagePath);
+        const pathParts = url.pathname.split('/');
+        
+        // Find the storage path (everything after /storage/v1/object/public/)
+        const storageIndex = pathParts.findIndex(part => part === 'public');
+        if (storageIndex !== -1 && storageIndex < pathParts.length - 1) {
+          const storagePath = pathParts.slice(storageIndex + 1).join('/');
+          
+          // The bucket name is the first part of the storage path
+          const storagePathParts = storagePath.split('/');
+          const bucketName = storagePathParts[0]; // First part is the bucket name
+          const filePath = storagePathParts.slice(1).join('/'); // Rest is the file path
+          
+          // Debug: Log the path structure
+          console.log('🔧 [getSupabaseImageUrl] Path analysis:', {
+            pathParts,
+            storageIndex,
+            bucketName,
+            storagePath,
+            filePath
+          });
+          
+          // Use backend proxy endpoint - always use Railway URL for production
+          const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://bm-ecommerce-api-production.up.railway.app';
+          
+          console.log('🔧 [getSupabaseImageUrl] Processing URL:', {
+            original: imagePath,
+            bucketName,
+            storagePath,
+            baseUrl,
+            finalUrl: `${baseUrl}/api/proxy/supabase-storage/${bucketName}/${encodeURIComponent(storagePath)}`
+          });
+          
+          return `${baseUrl}/api/proxy/supabase-storage/${bucketName}/${encodeURIComponent(filePath)}`;
+        }
+        
+        // Fallback to original URL if we can't parse it
+        console.warn('Could not parse Supabase URL structure:', imagePath);
+        return imagePath;
+      } catch (error) {
+        console.warn('Error processing Supabase URL:', error);
+        return imagePath;
+      }
+    }
+    return imagePath;
+  }
+  
+  // For relative paths, use the regular getImageUrl function
+  return getImageUrl(imagePath);
 };
 
 // Get initials from name
