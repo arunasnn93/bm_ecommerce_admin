@@ -5,7 +5,6 @@ import {
   CheckCircle,
   ChefHat,
   Clock,
-  DollarSign,
   Eye,
   MapPin,
   MessageSquare,
@@ -430,7 +429,6 @@ const OrdersPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center text-sm font-medium">
-                      <DollarSign className="h-3 w-3 mr-1" />
                       {formatCurrency(order.total_amount)}
                     </div>
                   </TableCell>
