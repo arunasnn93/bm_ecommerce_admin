@@ -48,7 +48,7 @@ npm run dev
 cp env.production .env
 
 # Update API URL if needed
-VITE_API_BASE_URL=https://bm-ecommerce-api-production.up.railway.app
+VITE_API_BASE_URL=https://api.groshly.com
 ```
 
 ## 🚀 Production Deployment
@@ -95,7 +95,7 @@ docker run -d -p 80:80 bm-admin-app:production
 - `VITE_ENABLE_ERROR_BOUNDARY`: Enable error boundary
 
 ### Backend Integration
-- **API URL**: https://bm-ecommerce-api-production.up.railway.app
+- **API URL**: https://api.groshly.com
 - **Health Check**: `/health`
 - **Authentication**: `/auth/admin-login`
 - **API Documentation**: Check backend repository

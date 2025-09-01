@@ -163,7 +163,7 @@ After implementing the proxy, test it with:
 
 ```bash
 # Test the proxy endpoint
-curl -I "https://bm-ecommerce-api-production.up.railway.app/api/proxy/supabase-storage/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png"
+curl -I "https://api.groshly.com/api/proxy/supabase-storage/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png"
 ```
 
 ## Expected Response
@@ -180,7 +180,7 @@ The frontend is already configured to use this proxy. The `getSupabaseImageUrl` 
 ```
 Original: https://fitobjouvvxbpqdcgxvg.supabase.co/storage/v1/object/public/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png
 
-Proxy: https://bm-ecommerce-api-production.up.railway.app/api/proxy/supabase-storage/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png
+Proxy: https://api.groshly.com/api/proxy/supabase-storage/Beena%20Stores/Store%20Images/1756649550140-cd6ba9946ac1dbfe.png
 ```
 
 ## Benefits

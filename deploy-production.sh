@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Quick Production Deployment Script for BM Admin App
-# Railway Backend: https://bm-ecommerce-api-production.up.railway.app
+# Railway Backend: https://api.groshly.com
 
 set -e
 
@@ -29,7 +29,7 @@ if [ ! -f "env.production" ]; then
 fi
 
 # Check if Railway backend URL is configured
-if ! grep -q "bm-ecommerce-api-production.up.railway.app" env.production; then
+if ! grep -q "api.groshly.com" env.production; then
     echo "❌ Error: Railway backend URL not configured in env.production!"
     exit 1
 fi
@@ -54,7 +54,7 @@ echo -e "${GREEN}✅ Production build completed successfully!${NC}"
 echo -e "${BLUE}📊 Build Information:${NC}"
 echo "  - Bundle size: $(du -sh dist | cut -f1)"
 echo "  - Files generated: $(find dist -type f | wc -l)"
-echo "  - Backend URL: https://bm-ecommerce-api-production.up.railway.app"
+  echo "  - Backend URL: https://api.groshly.com"
 
 # Deployment options
 echo -e "${YELLOW}🚀 Choose your deployment method:${NC}"
@@ -133,5 +133,5 @@ echo "  ✅ Test login functionality"
 echo "  ✅ Check all features work"
 echo "  ✅ Test on mobile devices"
 echo ""
-echo -e "${YELLOW}🔗 Backend API: https://bm-ecommerce-api-production.up.railway.app${NC}"
+echo -e "${YELLOW}🔗 Backend API: https://api.groshly.com${NC}"
 echo -e "${YELLOW}📚 Documentation: Check PRODUCTION_DEPLOYMENT.md for detailed instructions${NC}"

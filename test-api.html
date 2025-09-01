@@ -44,7 +44,7 @@
     <div id="result"></div>
 
     <script>
-        const API_BASE = 'https://bm-ecommerce-api-production.up.railway.app';
+        const API_BASE = 'https://api.groshly.com';
         let authToken = null;
         
         // Show current origin
@@ -326,13 +326,13 @@
         }
         
         async function testUrlComparison() {
-            const expectedUrl = 'https://bm-ecommerce-api-production.up.railway.app/auth/admin-login';
+            const expectedUrl = 'https://api.groshly.com/auth/admin-login';
             const currentUrl = `${window.location.origin}/auth/admin-login`;
             
             const comparison = {
                 expected: {
                     full: expectedUrl,
-                    base: 'https://bm-ecommerce-api-production.up.railway.app',
+                    base: 'https://api.groshly.com',
                     endpoint: '/auth/admin-login'
                 },
                 current: {

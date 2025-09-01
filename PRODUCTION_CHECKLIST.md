@@ -4,7 +4,7 @@
 
 ### **1. Environment Configuration**
 - [x] **API Base URL**: Updated to Railway backend
-  - Production: `https://bm-ecommerce-api-production.up.railway.app`
+  - Production: `https://api.groshly.com`
   - Environment file: `env.production` ✅
 - [x] **Debug Mode**: Disabled for production
 - [x] **React Query DevTools**: Disabled for production
@@ -113,7 +113,7 @@ sudo systemctl reload nginx
 ## 🔧 Backend Integration
 
 ### **Railway Backend Status**
-- [x] **Backend URL**: `https://bm-ecommerce-api-production.up.railway.app`
+- [x] **Backend URL**: `https://api.groshly.com`
 - [x] **Health Check**: `/health` endpoint
 - [x] **Authentication**: `/auth/admin-login` endpoint
 - [x] **API Endpoints**: All CRUD operations available

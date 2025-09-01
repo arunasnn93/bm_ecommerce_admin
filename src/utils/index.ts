@@ -113,7 +113,7 @@ export const getImageUrl = (imagePath: string) => {
   
   // Get the API base URL with fallbacks
   const baseUrl = import.meta.env.VITE_API_BASE_URL || 
-    (import.meta.env.DEV ? 'http://localhost:3000' : 'https://bm-ecommerce-api-production.up.railway.app');
+    (import.meta.env.DEV ? 'http://localhost:3000' : 'https://api.groshly.com');
   
   // If it starts with /, it's a relative path, prepend the API base URL
   if (imagePath.startsWith('/')) {
@@ -157,7 +157,7 @@ export const getSupabaseImageUrl = (imagePath: string) => {
           });
           
           // Use backend proxy endpoint - always use Railway URL for production
-          const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://bm-ecommerce-api-production.up.railway.app';
+          const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.groshly.com';
           
           console.log('🔧 [getSupabaseImageUrl] Processing URL:', {
             original: imagePath,

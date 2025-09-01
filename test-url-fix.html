@@ -45,7 +45,7 @@
                     const filePath = storagePathParts.slice(1).join('/'); // Rest is the file path
                     
                     // Use Railway URL
-                    const baseUrl = 'https://bm-ecommerce-api-production.up.railway.app';
+                    const baseUrl = 'https://api.groshly.com';
                     const finalUrl = `${baseUrl}/api/proxy/supabase-storage/${bucketName}/${encodeURIComponent(filePath)}`;
                     
                     log(`✅ Bucket name: ${bucketName}`, 'success');
