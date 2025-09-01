@@ -85,7 +85,7 @@ export interface Order {
   items?: OrderItem[]; // Optional since backend might not always return
   order_items?: OrderItem[]; // Backend provides this field name
   total_amount: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'submitted'; // Added 'submitted'
+  status: 'submitted' | 'accepted' | 'rejected' | 'packing' | 'ready' | 'delivered';
   delivery_address: DeliveryAddress | string; // Backend might provide string
   delivery_phone?: string; // Backend provides this
   special_instructions?: string;
@@ -204,7 +204,7 @@ export interface CreateAdminForm {
 
 export interface UpdateOrderStatusForm {
   status: Order['status'];
-  note?: string;
+  message?: string; // Backend expects `message`
 }
 
 export interface UpdateOrderPriceForm {

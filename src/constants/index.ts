@@ -105,25 +105,42 @@ export const USER_ROLES = {
 
 // Order Status
 export const ORDER_STATUS = {
-  PENDING: 'pending',
-  CONFIRMED: 'confirmed',
-  PREPARING: 'preparing',
+  SUBMITTED: 'submitted',
+  ACCEPTED: 'accepted',
+  REJECTED: 'rejected',
+  PACKING: 'packing',
   READY: 'ready',
   DELIVERED: 'delivered',
-  CANCELLED: 'cancelled',
-  SUBMITTED: 'submitted',
 } as const;
 
 // Order Status Labels (for display)
 export const ORDER_STATUS_LABELS = {
-  [ORDER_STATUS.PENDING]: 'Pending',
-  [ORDER_STATUS.CONFIRMED]: 'Confirmed',
-  [ORDER_STATUS.PREPARING]: 'Preparing',
+  [ORDER_STATUS.SUBMITTED]: 'Submitted',
+  [ORDER_STATUS.ACCEPTED]: 'Accepted',
+  [ORDER_STATUS.REJECTED]: 'Rejected',
+  [ORDER_STATUS.PACKING]: 'Packing',
   [ORDER_STATUS.READY]: 'Ready',
   [ORDER_STATUS.DELIVERED]: 'Delivered',
-  [ORDER_STATUS.CANCELLED]: 'Cancelled',
-  [ORDER_STATUS.SUBMITTED]: 'Submitted',
 } as const;
+
+// Order Status Transitions (allowed next statuses)
+export const ORDER_STATUS_TRANSITIONS = {
+  [ORDER_STATUS.SUBMITTED]: [ORDER_STATUS.ACCEPTED, ORDER_STATUS.REJECTED],
+  [ORDER_STATUS.ACCEPTED]: [ORDER_STATUS.PACKING],
+  [ORDER_STATUS.REJECTED]: [], // Terminal state
+  [ORDER_STATUS.PACKING]: [ORDER_STATUS.READY],
+  [ORDER_STATUS.READY]: [ORDER_STATUS.DELIVERED],
+  [ORDER_STATUS.DELIVERED]: [], // Terminal state
+} as const;
+
+// Order Status Flow (for UI guidance)
+export const ORDER_STATUS_FLOW = [
+  ORDER_STATUS.SUBMITTED,
+  ORDER_STATUS.ACCEPTED,
+  ORDER_STATUS.PACKING,
+  ORDER_STATUS.READY,
+  ORDER_STATUS.DELIVERED,
+] as const;
 
 // Form Validation Rules
 export const VALIDATION_RULES = {

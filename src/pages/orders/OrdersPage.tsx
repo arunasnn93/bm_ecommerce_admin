@@ -42,7 +42,7 @@ const updateStatusSchema = yup.object({
     .string()
     .oneOf(Object.values(ORDER_STATUS), 'Invalid status')
     .required('Status is required'),
-  note: yup.string(),
+  message: yup.string(),
 });
 
 const sendMessageSchema = yup.object({
@@ -197,7 +197,7 @@ const OrdersPage: React.FC = () => {
   const handleUpdateStatus = (order: Order) => {
     log.ui.userAction('update-order-status-open', { orderId: order.id });
     setSelectedOrder(order);
-    resetStatus({ status: order.status, note: '' });
+    resetStatus({ status: order.status, message: '' });
     setIsStatusModalOpen(true);
   };
 
@@ -237,23 +237,23 @@ const OrdersPage: React.FC = () => {
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case ORDER_STATUS.CONFIRMED: return 'info';
-      case ORDER_STATUS.PREPARING: return 'warning';
+      case ORDER_STATUS.ACCEPTED: return 'info';
+      case ORDER_STATUS.PACKING: return 'warning';
       case ORDER_STATUS.READY: return 'success';
       case ORDER_STATUS.DELIVERED: return 'success';
-      case ORDER_STATUS.CANCELLED: return 'danger';
+      case ORDER_STATUS.REJECTED: return 'danger';
       default: return 'secondary';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case ORDER_STATUS.PENDING: return <Clock className="h-4 w-4" />;
-      case ORDER_STATUS.CONFIRMED: return <CheckCircle className="h-4 w-4" />;
-      case ORDER_STATUS.PREPARING: return <ChefHat className="h-4 w-4" />;
+      case ORDER_STATUS.SUBMITTED: return <Clock className="h-4 w-4" />;
+      case ORDER_STATUS.ACCEPTED: return <CheckCircle className="h-4 w-4" />;
+      case ORDER_STATUS.PACKING: return <ChefHat className="h-4 w-4" />;
       case ORDER_STATUS.READY: return <CheckCircle className="h-4 w-4" />;
       case ORDER_STATUS.DELIVERED: return <Truck className="h-4 w-4" />;
-      case ORDER_STATUS.CANCELLED: return <XCircle className="h-4 w-4" />;
+      case ORDER_STATUS.REJECTED: return <XCircle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
@@ -669,11 +669,11 @@ const OrdersPage: React.FC = () => {
           </div>
 
           <FormField
-            name="note"
+            name="message"
             control={statusControl as any}
-            label="Note (Optional)"
-            placeholder="Add a note about this status change..."
-            helperText="This note will be visible in the status history"
+            label="Message (Optional)"
+            placeholder="Add a message about this status change..."
+            helperText="This message will be stored in status update log"
           />
 
           <div className="flex justify-end space-x-3 pt-4">

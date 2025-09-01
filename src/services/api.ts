@@ -306,10 +306,13 @@ class ApiService {
   }
 
   public async updateOrderStatus(id: string, data: UpdateOrderStatusForm): Promise<ApiResponse<Order>> {
+    // Backend expects { status, message }
+    const payload: any = { status: data.status };
+    if ((data as any).message) payload.message = (data as any).message;
     return this.request({
       method: 'PUT',
       url: `/api/orders/${id}/status`,
-      data,
+      data: payload,
     });
   }
 
