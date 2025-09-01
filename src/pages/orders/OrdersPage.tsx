@@ -1,40 +1,40 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-    Calendar,
-    CheckCircle,
-    ChefHat,
-    Clock,
-    DollarSign,
-    Eye,
-    MapPin,
-    MessageSquare,
-    Phone,
-    Truck,
-    XCircle
+  Calendar,
+  CheckCircle,
+  ChefHat,
+  Clock,
+  DollarSign,
+  Eye,
+  MapPin,
+  MessageSquare,
+  Phone,
+  Truck,
+  XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 
 import type { Order, OrderFilters, SendMessageForm, UpdateOrderStatusForm } from '@/types';
-import { formatCurrency, formatDate, getImageUrl } from '@/utils';
+import { formatCurrency, formatDate } from '@/utils';
 import { DEFAULTS, ORDER_STATUS, ORDER_STATUS_LABELS } from '@constants';
 import { apiService } from '@services/api';
 import { log } from '@utils/logger';
 
 import { FormField, SearchInput } from '@components/forms';
 import {
-    Badge,
-    Button,
-    Modal,
-    Pagination,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
+  Badge,
+  Button,
+  Modal,
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@components/ui';
 
 const updateStatusSchema = yup.object({
@@ -56,9 +56,11 @@ const sendMessageSchema = yup.object({
 const OrdersPage: React.FC = () => {
   const [filters, setFilters] = useState<OrderFilters>(DEFAULTS.ORDER_FILTERS);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{ url: string; filename: string; orderId: string } | null>(null);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { control: statusControl, handleSubmit: handleStatusSubmit, reset: resetStatus } = useForm<UpdateOrderStatusForm>({
@@ -120,6 +122,15 @@ const OrdersPage: React.FC = () => {
               status_history_count: order.status_history?.length || 0,
               full_order: order
             });
+            
+            // Log order images details
+            if (order.images && order.images.length > 0) {
+              console.log(`🖼️ [OrdersPage] Order ${index + 1} images:`, order.images.map(img => ({
+                id: img.id,
+                url: img.url,
+                filename: img.filename
+              })));
+            }
           });
           
           return {
@@ -195,6 +206,17 @@ const OrdersPage: React.FC = () => {
     setSelectedOrder(order);
     resetMessage({ message: '' });
     setIsMessageModalOpen(true);
+  };
+
+  const handleViewImage = (image: any, order: Order) => {
+    log.ui.userAction('view-order-image', { orderId: order.id, imageId: image.id });
+    setSelectedImage({
+      url: image.url,
+      filename: image.filename,
+      orderId: order.id
+    });
+    setSelectedOrder(order);
+    setIsImageModalOpen(true);
   };
 
   const onUpdateStatus = async (data: UpdateOrderStatusForm) => {
@@ -386,10 +408,10 @@ const OrdersPage: React.FC = () => {
                               key={image.id}
                               className="w-8 h-8 rounded border border-gray-200 overflow-hidden cursor-pointer hover:opacity-75"
                               title={`Image ${index + 1}`}
-                              onClick={() => window.open(getImageUrl(image.url), '_blank')}
+                              onClick={() => handleViewImage(image, order)}
                             >
                               <img
-                                src={getImageUrl(image.url)}
+                                src={image.url}
                                 alt={`Order image ${index + 1}`}
                                 className="w-full h-full object-cover"
                               />
@@ -549,10 +571,10 @@ const OrdersPage: React.FC = () => {
                   {selectedOrder.images.map((image, index) => (
                     <div key={image.id} className="relative">
                       <img
-                        src={getImageUrl(image.url)}
+                        src={image.url}
                         alt={`Order image ${index + 1}`}
                         className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={() => window.open(getImageUrl(image.url), '_blank')}
+                        onClick={() => handleViewImage(image, selectedOrder)}
                       />
                       <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
                         Image {index + 1}
@@ -569,6 +591,16 @@ const OrdersPage: React.FC = () => {
                 <h4 className="text-lg font-medium text-gray-900 mb-3">Special Instructions</h4>
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <p className="text-yellow-800">{selectedOrder.special_instructions}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Order Notes */}
+            {selectedOrder.notes && (
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Order Notes</h4>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-gray-800">{selectedOrder.notes}</p>
                 </div>
               </div>
             )}
@@ -696,6 +728,84 @@ const OrdersPage: React.FC = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Image View Modal */}
+      <Modal
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        title={`Order Image - #${selectedOrder?.id.slice(-8)}`}
+        size="xl"
+      >
+        {selectedImage && selectedOrder && (
+          <div className="space-y-6">
+            {/* Order Info */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="text-lg font-medium text-gray-900 mb-3">Order Information</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-gray-700">Customer:</span>
+                  <span className="ml-2">{selectedOrder.customer_name}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Phone:</span>
+                  <span className="ml-2">{selectedOrder.customer_mobile}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Status:</span>
+                  <span className="ml-2">
+                    <Badge variant={getStatusBadgeVariant(selectedOrder.status)}>
+                      {ORDER_STATUS_LABELS[selectedOrder.status]}
+                    </Badge>
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Total:</span>
+                  <span className="ml-2">{formatCurrency(selectedOrder.total_amount)}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="font-medium text-gray-700">Address:</span>
+                  <span className="ml-2">
+                    {typeof selectedOrder.delivery_address === 'string' 
+                      ? selectedOrder.delivery_address 
+                      : `${selectedOrder.delivery_address.street}, ${selectedOrder.delivery_address.city}`
+                    }
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Image Display */}
+            <div className="text-center">
+              <img
+                src={selectedImage.url}
+                alt={`Order image - ${selectedImage.filename}`}
+                className="max-w-full max-h-96 object-contain rounded-lg border border-gray-200"
+              />
+              <div className="mt-2 text-sm text-gray-500">
+                {selectedImage.filename}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-center space-x-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => window.open(selectedImage.url, '_blank')}
+              >
+                Open in New Tab
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsImageModalOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
