@@ -1,22 +1,23 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Calendar,
-  CheckCircle,
-  ChefHat,
-  Clock,
-  Eye,
-  MapPin,
-  MessageSquare,
-  Phone,
-  Truck,
-  XCircle
+    Calendar,
+    CheckCircle,
+    ChefHat,
+    Clock,
+    DollarSign,
+    Eye,
+    MapPin,
+    MessageSquare,
+    Phone,
+    Truck,
+    XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 
-import type { Order, OrderFilters, SendMessageForm, UpdateOrderStatusForm } from '@/types';
+import type { Order, OrderFilters, SendMessageForm, UpdateOrderPriceForm, UpdateOrderStatusForm } from '@/types';
 import { formatCurrency, formatDate } from '@/utils';
 import { DEFAULTS, ORDER_STATUS, ORDER_STATUS_LABELS } from '@constants';
 import { apiService } from '@services/api';
@@ -24,16 +25,16 @@ import { log } from '@utils/logger';
 
 import { FormField, SearchInput } from '@components/forms';
 import {
-  Badge,
-  Button,
-  Modal,
-  Pagination,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+    Badge,
+    Button,
+    Modal,
+    Pagination,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
 } from '@components/ui';
 
 const updateStatusSchema = yup.object({
@@ -52,6 +53,18 @@ const sendMessageSchema = yup.object({
     .max(500, 'Message must be less than 500 characters'),
 });
 
+const updatePriceSchema = yup.object({
+  total_amount: yup
+    .number()
+    .required('Total amount is required')
+    .positive('Total amount must be positive')
+    .min(0.01, 'Total amount must be at least 0.01'),
+  note: yup
+    .string()
+    .optional()
+    .max(500, 'Note must be less than 500 characters'),
+});
+
 const OrdersPage: React.FC = () => {
   const [filters, setFilters] = useState<OrderFilters>(DEFAULTS.ORDER_FILTERS);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -60,6 +73,7 @@ const OrdersPage: React.FC = () => {
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { control: statusControl, handleSubmit: handleStatusSubmit, reset: resetStatus } = useForm<UpdateOrderStatusForm>({
@@ -68,6 +82,10 @@ const OrdersPage: React.FC = () => {
 
   const { control: messageControl, handleSubmit: handleMessageSubmit, reset: resetMessage } = useForm<SendMessageForm>({
     resolver: yupResolver(sendMessageSchema),
+  });
+
+  const { control: priceControl, handleSubmit: handlePriceSubmit, reset: resetPrice } = useForm<UpdateOrderPriceForm>({
+    resolver: yupResolver(updatePriceSchema) as any,
   });
 
   // Fetch orders query
@@ -173,6 +191,18 @@ const OrdersPage: React.FC = () => {
     },
   });
 
+  // Update order price mutation
+  const updatePriceMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateOrderPriceForm }) => 
+      apiService.updateOrderPrice(id, data),
+    onSuccess: () => {
+      log.ui.userAction('order-price-updated');
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setIsPriceModalOpen(false);
+      resetPrice();
+    },
+  });
+
   const handleSearch = (search: string) => {
     log.ui.userAction('orders-search', { query: search });
     setFilters(prev => ({ ...prev, search, page: 1 }));
@@ -218,6 +248,13 @@ const OrdersPage: React.FC = () => {
     setIsImageModalOpen(true);
   };
 
+  const handleUpdatePrice = (order: Order) => {
+    log.ui.userAction('update-order-price-open', { orderId: order.id });
+    setSelectedOrder(order);
+    resetPrice({ total_amount: order.total_amount, note: '' });
+    setIsPriceModalOpen(true);
+  };
+
   const onUpdateStatus = async (data: UpdateOrderStatusForm) => {
     if (!selectedOrder) return;
     log.form.submit('UpdateOrderStatusForm', { 
@@ -232,6 +269,12 @@ const OrdersPage: React.FC = () => {
     if (!selectedOrder) return;
     log.form.submit('SendMessageForm', { orderId: selectedOrder.id });
     sendMessageMutation.mutate({ id: selectedOrder.id, data });
+  };
+
+  const onUpdatePrice = async (data: UpdateOrderPriceForm) => {
+    if (!selectedOrder) return;
+    log.form.submit('UpdateOrderPriceForm', { orderId: selectedOrder.id, newPrice: data.total_amount });
+    updatePriceMutation.mutate({ id: selectedOrder.id, data });
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -471,6 +514,14 @@ const OrdersPage: React.FC = () => {
                         icon={<MessageSquare className="h-3 w-3" />}
                       >
                         Message
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUpdatePrice(order)}
+                        icon={<DollarSign className="h-3 w-3" />}
+                      >
+                        Price
                       </Button>
                     </div>
                   </TableCell>
@@ -727,6 +778,59 @@ const OrdersPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+             {/* Update Price Modal */}
+       <Modal
+         isOpen={isPriceModalOpen}
+         onClose={() => setIsPriceModalOpen(false)}
+         title="Update Order Price"
+         description="Change the total amount of this order"
+         size="md"
+       >
+         <form onSubmit={handlePriceSubmit(onUpdatePrice as any)} className="space-y-4">
+           <div>
+             <label className="block text-sm font-medium text-gray-700 mb-1">
+               Total Amount
+             </label>
+             <input
+               type="number"
+               {...priceControl.register?.('total_amount')}
+               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+               step="0.01"
+               min="0.01"
+             />
+           </div>
+
+           <div>
+             <label className="block text-sm font-medium text-gray-700 mb-1">
+               Note (Optional)
+             </label>
+             <textarea
+               {...priceControl.register?.('note')}
+               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+               placeholder="Add a note about this price change..."
+               rows={3}
+             />
+             <p className="text-xs text-gray-500 mt-1">This note will be stored in price update log</p>
+           </div>
+
+           <div className="flex justify-end space-x-3 pt-4">
+             <Button
+               type="button"
+               variant="outline"
+               onClick={() => setIsPriceModalOpen(false)}
+             >
+               Cancel
+             </Button>
+             <Button
+               type="submit"
+               loading={updatePriceMutation.isPending}
+             >
+               Update Price
+             </Button>
+           </div>
+         </form>
+       </Modal>
 
       {/* Image View Modal */}
       <Modal
