@@ -33,6 +33,7 @@ export const ROUTES = {
   ORDERS: '/orders',
   IMAGES: '/images',
   STORES: '/stores',
+  OFFERS: '/offers',
 } as const;
 
 // API Endpoints
@@ -67,6 +68,15 @@ export const API_ENDPOINTS = {
     LIST: '/api/stores',
     MY_STORES: '/api/stores/my-stores',
     DETAILS: (id: string) => `/api/stores/${id}`,
+  },
+  OFFERS: {
+    LIST: '/api/offers',
+    DETAILS: (id: string) => `/api/offers/${id}`,
+    CREATE: '/api/offers',
+    UPDATE: (id: string) => `/api/offers/${id}`,
+    DELETE: (id: string) => `/api/offers/${id}`,
+    TOGGLE_STATUS: (id: string) => `/api/offers/${id}/toggle-status`,
+    PUBLIC_ACTIVE: '/api/offers/public/active',
   },
   DASHBOARD: {
     STATS: '/api/admin/dashboard/stats',
@@ -208,6 +218,10 @@ export const DEFAULTS = {
     limit: UI_CONFIG.PAGINATION_LIMIT,
   },
   ORDER_FILTERS: {
+    page: 1,
+    limit: UI_CONFIG.PAGINATION_LIMIT,
+  },
+  OFFER_FILTERS: {
     page: 1,
     limit: UI_CONFIG.PAGINATION_LIMIT,
   },

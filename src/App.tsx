@@ -15,6 +15,7 @@ import { ProtectedRoute } from '@components/layout/ProtectedRoute';
 import LoginPage from '@pages/auth/LoginPage';
 import DashboardPage from '@pages/dashboard/DashboardPage';
 import ImagesPage from '@pages/images/ImagesPage';
+import OffersPage from '@pages/offers/OffersPage';
 import OrdersPage from '@pages/orders/OrdersPage';
 import StoresPage from '@pages/stores/StoresPage';
 import UsersPage from '@pages/users/UsersPage';
@@ -75,6 +76,7 @@ function App() {
                       <Route path="/orders" element={<OrdersPage />} />
                       <Route path="/stores" element={<StoresPage />} />
                       <Route path="/images" element={<ImagesPage />} />
+                      <Route path="/offers" element={<OffersPage />} />
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                   </Layout>

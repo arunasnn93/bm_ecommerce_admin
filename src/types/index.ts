@@ -292,6 +292,49 @@ export interface UpdateStoreForm {
   is_active?: boolean;
 }
 
+// Offer Types
+export interface Offer {
+  id: string;
+  store_id: string;
+  offer_heading: string;
+  offer_description: string;
+  image_url: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+  store?: {
+    id: string;
+    name: string;
+  };
+  creator?: {
+    id: string;
+    name: string;
+    username: string;
+  };
+}
+
+export interface CreateOfferForm {
+  offer_heading: string;
+  offer_description: string;
+  image: File;
+}
+
+export interface UpdateOfferForm {
+  offer_heading?: string;
+  offer_description?: string;
+  image?: File;
+  is_active?: boolean;
+}
+
+export interface OfferFilters {
+  search?: string;
+  is_active?: boolean;
+  store_id?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+}
+
 export interface AuthStore {
   user: AdminUser | null;
   token: string | null;

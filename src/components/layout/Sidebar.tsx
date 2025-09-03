@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   ShoppingBag,
   Store as StoreIcon,
+  Tag,
   Users,
   X
 } from 'lucide-react';
@@ -22,6 +23,7 @@ const navigation = [
   { name: 'Orders', href: '/orders', icon: ShoppingBag, roles: ['super_admin', 'admin'] },
   { name: 'Stores', href: '/stores', icon: StoreIcon, roles: ['super_admin'] },
   { name: 'Store Images', href: '/images', icon: Images, roles: ['super_admin', 'admin'] },
+  { name: 'Store Offers', href: '/offers', icon: Tag, roles: ['super_admin', 'admin'] },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {

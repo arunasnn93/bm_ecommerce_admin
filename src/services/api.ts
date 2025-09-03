@@ -1,23 +1,25 @@
 import type {
-    ApiResponse,
-    AuthResponse,
-    CreateAdminForm,
-    CreateStoreForm,
-    DashboardStats,
-    LoginCredentials,
-    Order,
-    OrderFilters,
-    OrderImage,
-    PaginatedResponse,
-    SendMessageForm,
-    Store,
-    StoreFilters,
-    StoreImage,
-    UpdateOrderPriceForm,
-    UpdateOrderStatusForm,
-    UpdateStoreForm,
-    User,
-    UserFilters
+  ApiResponse,
+  AuthResponse,
+  CreateAdminForm,
+  CreateStoreForm,
+  DashboardStats,
+  LoginCredentials,
+  Offer,
+  OfferFilters,
+  Order,
+  OrderFilters,
+  OrderImage,
+  PaginatedResponse,
+  SendMessageForm,
+  Store,
+  StoreFilters,
+  StoreImage,
+  UpdateOrderPriceForm,
+  UpdateOrderStatusForm,
+  UpdateStoreForm,
+  User,
+  UserFilters
 } from '@/types';
 import { API_CONFIG, API_ENDPOINTS, AUTH_CONFIG } from '@constants';
 import { log } from '@utils/logger';
@@ -403,6 +405,65 @@ class ApiService {
     return this.request({
       method: 'DELETE',
       url: `/api/admin/store-images/${id}`,
+    });
+  }
+
+  // Offer Management APIs
+  public async getOffers(filters: OfferFilters = {}): Promise<PaginatedResponse<Offer>> {
+    const params = new URLSearchParams();
+    
+    if (filters.search) params.append('search', filters.search);
+    if (filters.is_active !== undefined) params.append('is_active', filters.is_active.toString());
+    if (filters.store_id) params.append('store_id', filters.store_id);
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.limit) params.append('limit', filters.limit.toString());
+
+    return this.request({
+      method: 'GET',
+      url: `/api/offers?${params.toString()}`,
+    });
+  }
+
+  public async getOfferById(id: string): Promise<ApiResponse<Offer>> {
+    return this.request({
+      method: 'GET',
+      url: `/api/offers/${id}`,
+    });
+  }
+
+  public async createOffer(data: FormData): Promise<ApiResponse<Offer>> {
+    return this.request({
+      method: 'POST',
+      url: '/api/offers',
+      data,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  }
+
+  public async updateOffer(id: string, data: FormData): Promise<ApiResponse<Offer>> {
+    return this.request({
+      method: 'PUT',
+      url: `/api/offers/${id}`,
+      data,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  }
+
+  public async deleteOffer(id: string): Promise<ApiResponse<unknown>> {
+    return this.request({
+      method: 'DELETE',
+      url: `/api/offers/${id}`,
+    });
+  }
+
+  public async toggleOfferStatus(id: string): Promise<ApiResponse<Offer>> {
+    return this.request({
+      method: 'PUT',
+      url: `/api/offers/${id}/toggle-status`,
     });
   }
 
