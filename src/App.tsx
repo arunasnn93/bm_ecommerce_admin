@@ -29,15 +29,18 @@ const queryClient = new QueryClient({
         if (error?.response?.status === 429) {
           return false;
         }
-        return failureCount < 2;
+        // Reduce retries to prevent excessive calls
+        return failureCount < 1;
       },
       refetchOnWindowFocus: false,
-      refetchOnMount: true,
-      refetchOnReconnect: 'always',
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes (was cacheTime in v4)
+      refetchOnMount: false, // Changed from true to false to prevent refetch on mount
+      refetchOnReconnect: false, // Changed from 'always' to false
+      staleTime: 30 * 60 * 1000, // Increased to 30 minutes
+      gcTime: 60 * 60 * 1000, // Increased to 60 minutes
       // No aggressive refetch intervals by default
       refetchInterval: false,
+      // Add network mode to prevent duplicate requests
+      networkMode: 'online',
     },
     mutations: {
       retry: (failureCount, error: any) => {

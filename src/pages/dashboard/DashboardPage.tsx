@@ -22,7 +22,7 @@ const DashboardPage: React.FC = () => {
     enabled: !!user, // Only fetch when user is authenticated
     staleTime: Infinity, // Data stays fresh until manual refresh
     gcTime: Infinity, // Keep in cache indefinitely
-    refetchOnMount: true, // Fetch on first load
+    refetchOnMount: false, // Don't refetch on mount to prevent excessive calls
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchOnReconnect: false, // Don't refetch on reconnect
     refetchInterval: false, // No automatic refresh
@@ -35,7 +35,7 @@ const DashboardPage: React.FC = () => {
     enabled: !!user, // Only fetch when user is authenticated
     staleTime: Infinity, // Data stays fresh until manual refresh
     gcTime: Infinity, // Keep in cache indefinitely
-    refetchOnMount: true, // Fetch on first load
+    refetchOnMount: false, // Don't refetch on mount to prevent excessive calls
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchInterval: false, // No automatic refresh
@@ -48,7 +48,7 @@ const DashboardPage: React.FC = () => {
     enabled: !!user, // Only fetch when user is authenticated
     staleTime: Infinity, // Data stays fresh until manual refresh
     gcTime: Infinity, // Keep in cache indefinitely
-    refetchOnMount: true, // Fetch on first load
+    refetchOnMount: false, // Don't refetch on mount to prevent excessive calls
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchInterval: false, // No automatic refresh
@@ -89,7 +89,7 @@ const DashboardPage: React.FC = () => {
     },
   ] : [];
 
-  // Manual refresh function
+  // Manual refresh function with debouncing
   const handleRefresh = async () => {
     if (isRefreshing) return; // Prevent multiple refreshes
     
@@ -97,6 +97,9 @@ const DashboardPage: React.FC = () => {
     log.ui.userAction('dashboard-manual-refresh', { selectedPeriod });
     
     try {
+      // Add a small delay to prevent rapid successive calls
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Refresh all queries in parallel
       await Promise.all([
         refetchStats(),
@@ -119,6 +122,17 @@ const DashboardPage: React.FC = () => {
       setLastRefresh(new Date());
     }
   }, [dashboardStats, recentOrders, recentUsers, lastRefresh]);
+
+  // Ensure data is fetched only once on mount when user is authenticated
+  useEffect(() => {
+    if (user && !dashboardStats && !recentOrders && !recentUsers) {
+      log.ui.userAction('dashboard-initial-load', { selectedPeriod });
+      // Manually trigger initial fetch
+      refetchStats();
+      refetchOrders();
+      refetchUsers();
+    }
+  }, [user, dashboardStats, recentOrders, recentUsers, refetchStats, refetchOrders, refetchUsers, selectedPeriod]);
 
   useEffect(() => {
     log.ui.componentMount('DashboardPage', { selectedPeriod });
@@ -194,6 +208,7 @@ const DashboardPage: React.FC = () => {
                 }
                 transition-colors duration-200
               `}
+              title={isRefreshing ? 'Please wait...' : 'Refresh dashboard data'}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
