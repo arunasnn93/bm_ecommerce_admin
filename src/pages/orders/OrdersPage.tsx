@@ -1,17 +1,17 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-    Calendar,
-    CheckCircle,
-    ChefHat,
-    Clock,
-    DollarSign,
-    Eye,
-    MapPin,
-    MessageSquare,
-    Phone,
-    Truck,
-    XCircle
+  Calendar,
+  CheckCircle,
+  ChefHat,
+  Clock,
+  DollarSign,
+  Eye,
+  MapPin,
+  MessageSquare,
+  Phone,
+  Truck,
+  XCircle
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -25,16 +25,16 @@ import { log } from '@utils/logger';
 
 import { FormField, SearchInput } from '@components/forms';
 import {
-    Badge,
-    Button,
-    Modal,
-    Pagination,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
+  Badge,
+  Button,
+  Modal,
+  Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@components/ui';
 
 const updateStatusSchema = yup.object({
@@ -423,7 +423,7 @@ const OrdersPage: React.FC = () => {
               ordersData?.data.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell>
-                    <div className="font-medium text-gray-900">#{order.id.slice(-8)}</div>
+                    <div className="font-medium text-gray-900">#{order.id.slice(0,8)}</div>
                   </TableCell>
                   <TableCell>
                     <div>
