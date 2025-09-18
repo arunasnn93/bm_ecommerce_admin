@@ -17,7 +17,7 @@ const DashboardPage: React.FC = () => {
 
   // Fetch dashboard stats - load once, manual refresh only
   const { data: dashboardStats, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useQuery({
-    queryKey: ['dashboard-stats', selectedPeriod],
+    queryKey: ['dashboard-stats'],
     queryFn: () => apiService.getDashboardStats(),
     enabled: !!user, // Only fetch when user is authenticated
     staleTime: Infinity, // Data stays fresh until manual refresh
@@ -132,7 +132,7 @@ const DashboardPage: React.FC = () => {
       refetchOrders();
       refetchUsers();
     }
-  }, [user, dashboardStats, recentOrders, recentUsers, refetchStats, refetchOrders, refetchUsers, selectedPeriod]);
+  }, [user, dashboardStats, recentOrders, recentUsers, refetchStats, refetchOrders, refetchUsers]);
 
   useEffect(() => {
     log.ui.componentMount('DashboardPage', { selectedPeriod });
