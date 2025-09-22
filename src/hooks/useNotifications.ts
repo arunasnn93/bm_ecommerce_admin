@@ -32,22 +32,29 @@ export const useNotifications = () => {
   // Track shown toasts to prevent duplicates (using ref for synchronous access)
   const shownToastsRef = useRef<Set<string>>(new Set());
   const [shownToasts, setShownToasts] = useState<Set<string>>(new Set());
+  
+  // Generate unique instance ID for debugging
+  const instanceId = useRef(Math.random().toString(36).substr(2, 9));
 
   // Handle new notifications
   const handleNotification = useCallback((notification: NotificationData) => {
-    log.info('Processing notification:', {
+    console.log(`🔔 [NOTIFICATION-${instanceId.current}] Received notification:`, {
       id: notification.id,
       type: notification.type,
       title: notification.title,
-      timestamp: notification.timestamp
+      timestamp: notification.timestamp,
+      shownToastsCount: shownToastsRef.current.size,
+      alreadyShown: shownToastsRef.current.has(notification.id)
     });
     
     // Check if we've already shown a toast for this notification FIRST (synchronous check)
     if (shownToastsRef.current.has(notification.id)) {
-      log.info('Toast already shown for notification, skipping:', notification.id);
+      console.log('🚫 [NOTIFICATION] Toast already shown for notification, skipping:', notification.id);
       return;
     }
 
+    console.log(`✅ [NOTIFICATION-${instanceId.current}] Showing toast for notification:`, notification.id);
+    
     // Mark this toast as shown IMMEDIATELY to prevent race conditions (synchronous update)
     shownToastsRef.current.add(notification.id);
     setShownToasts(prev => new Set([...prev, notification.id]));

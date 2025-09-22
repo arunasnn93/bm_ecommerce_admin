@@ -92,13 +92,17 @@ class WebSocketService {
     });
 
     this.socket.on('notification', (notification: NotificationData) => {
-      log.info('Received notification:', {
+      console.log('🌐 [WEBSOCKET] Received notification:', {
         id: notification.id,
         type: notification.type,
         title: notification.title,
-        timestamp: notification.timestamp
+        timestamp: notification.timestamp,
+        callbackCount: this.notificationCallbacks.length
       });
-      this.notificationCallbacks.forEach(callback => callback(notification));
+      this.notificationCallbacks.forEach((callback, index) => {
+        console.log(`🌐 [WEBSOCKET] Calling callback ${index + 1}/${this.notificationCallbacks.length}`);
+        callback(notification);
+      });
     });
 
     this.socket.on('connected', (data) => {
