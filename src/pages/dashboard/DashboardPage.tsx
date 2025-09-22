@@ -1,13 +1,13 @@
 import { formatCurrency } from '@/utils';
+import { NotificationBell } from '@components/notifications';
 import { ORDER_STATUS, ORDER_STATUS_LABELS } from '@constants';
+import { useNotifications } from '@hooks/useNotifications';
 import { apiService } from '@services/api';
 import { useAuthStore } from '@store/authStore';
 import { useQuery } from '@tanstack/react-query';
 import { log } from '@utils/logger';
 import { Activity, AlertCircle, Clock, DollarSign, RefreshCw, ShoppingBag, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { NotificationBell } from '@components/notifications';
-import { useNotifications } from '@hooks/useNotifications';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuthStore();

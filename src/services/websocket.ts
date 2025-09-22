@@ -92,7 +92,12 @@ class WebSocketService {
     });
 
     this.socket.on('notification', (notification: NotificationData) => {
-      log.info('Received notification:', notification);
+      log.info('Received notification:', {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        timestamp: notification.timestamp
+      });
       this.notificationCallbacks.forEach(callback => callback(notification));
     });
 

@@ -70,120 +70,35 @@ class SoundNotificationService {
   }
 
   private createDefaultNotificationSound(): HTMLAudioElement {
-    // Create a simple notification sound using Web Audio API
+    // Create a simple notification sound using data URL
     const audio = new Audio();
-    
-    if (this.audioContext) {
-      // Generate a pleasant notification sound
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
-      oscillator.frequency.setValueAtTime(1000, this.audioContext.currentTime + 0.1);
-      oscillator.frequency.setValueAtTime(600, this.audioContext.currentTime + 0.2);
-      
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
-      
-      oscillator.start(this.audioContext.currentTime);
-      oscillator.stop(this.audioContext.currentTime + 0.5);
-    } else {
-      // Fallback: Create a data URL for a simple beep sound
-      const audioData = this.generateBeepSound(800, 0.3);
-      audio.src = audioData;
-    }
-    
+    const audioData = this.generateBeepSound(800, 0.3);
+    audio.src = audioData;
+    audio.preload = 'auto';
     return audio;
   }
 
   private createChimeSound(): HTMLAudioElement {
     const audio = new Audio();
-    
-    if (this.audioContext) {
-      // Create a pleasant chime sound
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(523.25, this.audioContext.currentTime); // C5
-      oscillator.frequency.setValueAtTime(659.25, this.audioContext.currentTime + 0.1); // E5
-      oscillator.frequency.setValueAtTime(783.99, this.audioContext.currentTime + 0.2); // G5
-      
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.2, this.audioContext.currentTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1.0);
-      
-      oscillator.start(this.audioContext.currentTime);
-      oscillator.stop(this.audioContext.currentTime + 1.0);
-    } else {
-      const audioData = this.generateBeepSound(523, 0.5);
-      audio.src = audioData;
-    }
-    
+    const audioData = this.generateBeepSound(523, 0.5);
+    audio.src = audioData;
+    audio.preload = 'auto';
     return audio;
   }
 
   private createBellSound(): HTMLAudioElement {
     const audio = new Audio();
-    
-    if (this.audioContext) {
-      // Create a bell-like sound
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(1000, this.audioContext.currentTime);
-      oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime + 0.1);
-      oscillator.frequency.setValueAtTime(600, this.audioContext.currentTime + 0.2);
-      
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.4, this.audioContext.currentTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.8);
-      
-      oscillator.start(this.audioContext.currentTime);
-      oscillator.stop(this.audioContext.currentTime + 0.8);
-    } else {
-      const audioData = this.generateBeepSound(1000, 0.4);
-      audio.src = audioData;
-    }
-    
+    const audioData = this.generateBeepSound(1000, 0.4);
+    audio.src = audioData;
+    audio.preload = 'auto';
     return audio;
   }
 
   private createNotificationSound(): HTMLAudioElement {
     const audio = new Audio();
-    
-    if (this.audioContext) {
-      // Create a modern notification sound
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(440, this.audioContext.currentTime); // A4
-      oscillator.frequency.setValueAtTime(554.37, this.audioContext.currentTime + 0.1); // C#5
-      oscillator.frequency.setValueAtTime(659.25, this.audioContext.currentTime + 0.2); // E5
-      
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.6);
-      
-      oscillator.start(this.audioContext.currentTime);
-      oscillator.stop(this.audioContext.currentTime + 0.6);
-    } else {
-      const audioData = this.generateBeepSound(440, 0.3);
-      audio.src = audioData;
-    }
-    
+    const audioData = this.generateBeepSound(440, 0.3);
+    audio.src = audioData;
+    audio.preload = 'auto';
     return audio;
   }
 

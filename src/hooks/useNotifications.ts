@@ -31,13 +31,27 @@ export const useNotifications = () => {
 
   // Handle new notifications
   const handleNotification = useCallback((notification: NotificationData) => {
-    log.info('Processing notification:', notification);
+    log.info('Processing notification:', {
+      id: notification.id,
+      type: notification.type,
+      title: notification.title,
+      timestamp: notification.timestamp
+    });
     
-    setState(prev => ({
-      ...prev,
-      notifications: [notification, ...prev.notifications.slice(0, 49)], // Keep last 50 notifications
-      unreadCount: prev.unreadCount + 1
-    }));
+    setState(prev => {
+      // Check if we already have this notification to prevent duplicates
+      const existingNotification = prev.notifications.find(n => n.id === notification.id);
+      if (existingNotification) {
+        log.warn('Duplicate notification received, ignoring:', notification.id);
+        return prev;
+      }
+      
+      return {
+        ...prev,
+        notifications: [notification, ...prev.notifications.slice(0, 49)], // Keep last 50 notifications
+        unreadCount: prev.unreadCount + 1
+      };
+    });
 
     // Play sound notification
     if (notification.type === 'new_order') {
