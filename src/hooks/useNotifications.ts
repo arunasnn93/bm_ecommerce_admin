@@ -16,25 +16,40 @@ export interface NotificationState {
   };
 }
 
+// Global state to prevent multiple instances
+let globalNotificationState: NotificationState = {
+  isConnected: false,
+  notifications: [],
+  unreadCount: 0,
+  settings: {
+    soundEnabled: soundNotificationService.isEnabled(),
+    volume: soundNotificationService.getVolume(),
+    soundType: soundNotificationService.getSoundType(),
+  }
+};
+
+let globalShownToasts = new Set<string>();
+let globalStateSetters: Set<React.Dispatch<React.SetStateAction<NotificationState>>> = new Set();
+let globalToastSetters: Set<React.Dispatch<React.SetStateAction<Set<string>>>> = new Set();
+
 export const useNotifications = () => {
   const { user, token, isAuthenticated } = useAuthStore();
-  const [state, setState] = useState<NotificationState>({
-    isConnected: false,
-    notifications: [],
-    unreadCount: 0,
-    settings: {
-      soundEnabled: soundNotificationService.isEnabled(),
-      volume: soundNotificationService.getVolume(),
-      soundType: soundNotificationService.getSoundType(),
-    }
-  });
-  
-  // Track shown toasts to prevent duplicates (using ref for synchronous access)
-  const shownToastsRef = useRef<Set<string>>(new Set());
-  const [shownToasts, setShownToasts] = useState<Set<string>>(new Set());
+  const [state, setState] = useState<NotificationState>(globalNotificationState);
+  const [shownToasts, setShownToasts] = useState<Set<string>>(globalShownToasts);
   
   // Generate unique instance ID for debugging
   const instanceId = useRef(Math.random().toString(36).substr(2, 9));
+  
+  // Register this instance's setters globally
+  useEffect(() => {
+    globalStateSetters.add(setState);
+    globalToastSetters.add(setShownToasts);
+    
+    return () => {
+      globalStateSetters.delete(setState);
+      globalToastSetters.delete(setShownToasts);
+    };
+  }, []);
 
   // Handle new notifications
   const handleNotification = useCallback((notification: NotificationData) => {
@@ -43,12 +58,12 @@ export const useNotifications = () => {
       type: notification.type,
       title: notification.title,
       timestamp: notification.timestamp,
-      shownToastsCount: shownToastsRef.current.size,
-      alreadyShown: shownToastsRef.current.has(notification.id)
+      shownToastsCount: globalShownToasts.size,
+      alreadyShown: globalShownToasts.has(notification.id)
     });
     
     // Check if we've already shown a toast for this notification FIRST (synchronous check)
-    if (shownToastsRef.current.has(notification.id)) {
+    if (globalShownToasts.has(notification.id)) {
       console.log('🚫 [NOTIFICATION] Toast already shown for notification, skipping:', notification.id);
       return;
     }
@@ -56,22 +71,30 @@ export const useNotifications = () => {
     console.log(`✅ [NOTIFICATION-${instanceId.current}] Showing toast for notification:`, notification.id);
     
     // Mark this toast as shown IMMEDIATELY to prevent race conditions (synchronous update)
-    shownToastsRef.current.add(notification.id);
-    setShownToasts(prev => new Set([...prev, notification.id]));
+    globalShownToasts.add(notification.id);
     
-    setState(prev => {
-      // Check if we already have this notification to prevent duplicates
-      const existingNotification = prev.notifications.find(n => n.id === notification.id);
-      if (existingNotification) {
-        log.warn('Duplicate notification received, ignoring:', notification.id);
-        return prev;
-      }
-      
-      return {
-        ...prev,
-        notifications: [notification, ...prev.notifications.slice(0, 49)], // Keep last 50 notifications
-        unreadCount: prev.unreadCount + 1
-      };
+    // Update all registered toast setters
+    globalToastSetters.forEach(setter => {
+      setter(prev => new Set([...prev, notification.id]));
+    });
+    
+    // Check if we already have this notification to prevent duplicates
+    const existingNotification = globalNotificationState.notifications.find(n => n.id === notification.id);
+    if (existingNotification) {
+      log.warn('Duplicate notification received, ignoring:', notification.id);
+      return;
+    }
+    
+    // Update global state
+    globalNotificationState = {
+      ...globalNotificationState,
+      notifications: [notification, ...globalNotificationState.notifications.slice(0, 49)], // Keep last 50 notifications
+      unreadCount: globalNotificationState.unreadCount + 1
+    };
+    
+    // Update all registered state setters
+    globalStateSetters.forEach(setter => {
+      setter(globalNotificationState);
     });
 
     // Play sound notification
@@ -120,7 +143,10 @@ export const useNotifications = () => {
   // Handle connection status changes
   const handleConnectionChange = useCallback((connected: boolean) => {
     log.info('WebSocket connection status changed:', connected);
-    setState(prev => ({ ...prev, isConnected: connected }));
+    globalNotificationState = { ...globalNotificationState, isConnected: connected };
+    
+    // Update all registered setters
+    globalStateSetters.forEach(setter => setter(globalNotificationState));
     
     // No toast notifications for connection status changes
     // Users can see connection status in the notification bell
@@ -157,12 +183,14 @@ export const useNotifications = () => {
   // Clean up old toast IDs periodically to prevent memory leaks
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
-      // Keep only the last 100 toast IDs in both ref and state
-      const toastArray = Array.from(shownToastsRef.current);
+      // Keep only the last 100 toast IDs in global state
+      const toastArray = Array.from(globalShownToasts);
       if (toastArray.length > 100) {
         const newSet = new Set(toastArray.slice(-100));
-        shownToastsRef.current = newSet;
-        setShownToasts(newSet);
+        globalShownToasts = newSet;
+        
+        // Update all registered toast setters
+        globalToastSetters.forEach(setter => setter(newSet));
       }
     }, 60000); // Clean up every minute
 
@@ -171,44 +199,55 @@ export const useNotifications = () => {
 
   // Update settings when they change
   useEffect(() => {
-    setState(prev => ({
-      ...prev,
+    globalNotificationState = {
+      ...globalNotificationState,
       settings: {
         soundEnabled: soundNotificationService.isEnabled(),
         volume: soundNotificationService.getVolume(),
         soundType: soundNotificationService.getSoundType(),
       }
-    }));
+    };
+    
+    // Update all registered setters
+    globalStateSetters.forEach(setter => setter(globalNotificationState));
   }, []);
 
   // Actions
   const markAsRead = useCallback((notificationId: string) => {
-    setState(prev => ({
-      ...prev,
-      notifications: prev.notifications.map(notif => 
+    globalNotificationState = {
+      ...globalNotificationState,
+      notifications: globalNotificationState.notifications.map(notif => 
         notif.id === notificationId ? { ...notif, isRead: true } : notif
       ),
-      unreadCount: Math.max(0, prev.unreadCount - 1)
-    }));
+      unreadCount: Math.max(0, globalNotificationState.unreadCount - 1)
+    };
+    
+    // Update all registered setters
+    globalStateSetters.forEach(setter => setter(globalNotificationState));
   }, []);
 
   const markAllAsRead = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      notifications: prev.notifications.map(notif => ({ ...notif, isRead: true })),
+    globalNotificationState = {
+      ...globalNotificationState,
+      notifications: globalNotificationState.notifications.map(notif => ({ ...notif, isRead: true })),
       unreadCount: 0
-    }));
+    };
+    
+    // Update all registered setters
+    globalStateSetters.forEach(setter => setter(globalNotificationState));
   }, []);
 
   const clearNotifications = useCallback(() => {
-    setState(prev => ({
-      ...prev,
+    globalNotificationState = {
+      ...globalNotificationState,
       notifications: [],
       unreadCount: 0
-    }));
-    // Also clear shown toasts
-    shownToastsRef.current.clear();
-    setShownToasts(new Set());
+    };
+    globalShownToasts.clear();
+    
+    // Update all registered setters
+    globalStateSetters.forEach(setter => setter(globalNotificationState));
+    globalToastSetters.forEach(setter => setter(new Set()));
   }, []);
 
   const updateSoundSettings = useCallback((settings: Partial<NotificationState['settings']>) => {
@@ -222,13 +261,16 @@ export const useNotifications = () => {
       soundNotificationService.setSoundType(settings.soundType);
     }
     
-    setState(prev => ({
-      ...prev,
+    globalNotificationState = {
+      ...globalNotificationState,
       settings: {
-        ...prev.settings,
+        ...globalNotificationState.settings,
         ...settings
       }
-    }));
+    };
+    
+    // Update all registered setters
+    globalStateSetters.forEach(setter => setter(globalNotificationState));
   }, []);
 
   const testSound = useCallback(() => {
