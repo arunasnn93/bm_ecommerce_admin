@@ -6,12 +6,17 @@ import { useQuery } from '@tanstack/react-query';
 import { log } from '@utils/logger';
 import { Activity, AlertCircle, Clock, DollarSign, RefreshCw, ShoppingBag, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { NotificationBell } from '@components/notifications';
+import { useNotifications } from '@hooks/useNotifications';
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuthStore();
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('today');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  
+  // Initialize notifications
+  useNotifications();
 
 
 
@@ -164,9 +169,11 @@ const DashboardPage: React.FC = () => {
             </p>
           </div>
           
-          {/* Controls: Period Selector + Refresh Button */}
+          {/* Controls: Notifications + Period Selector + Refresh Button */}
           <div className="flex items-center space-x-4">
-
+            
+            {/* Notification Bell */}
+            <NotificationBell />
             
             {/* Last Refresh Time */}
             {lastRefresh && (
