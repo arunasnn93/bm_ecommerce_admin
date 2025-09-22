@@ -123,16 +123,12 @@ const DashboardPage: React.FC = () => {
     }
   }, [dashboardStats, recentOrders, recentUsers, lastRefresh]);
 
-  // Ensure data is fetched only once on mount when user is authenticated
+  // Log dashboard load when user is authenticated
   useEffect(() => {
-    if (user && !dashboardStats && !recentOrders && !recentUsers) {
+    if (user) {
       log.ui.userAction('dashboard-initial-load', { selectedPeriod });
-      // Manually trigger initial fetch
-      refetchStats();
-      refetchOrders();
-      refetchUsers();
     }
-  }, [user, dashboardStats, recentOrders, recentUsers, refetchStats, refetchOrders, refetchUsers]);
+  }, [user, selectedPeriod]);
 
   useEffect(() => {
     log.ui.componentMount('DashboardPage', { selectedPeriod });
