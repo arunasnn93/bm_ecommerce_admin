@@ -2,7 +2,7 @@ import { soundNotificationService } from '@services/soundNotification';
 import { websocketService, type NewOrderNotification, type NotificationData } from '@services/websocket';
 import { useAuthStore } from '@store/authStore';
 import { log } from '@utils/logger';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
 export interface NotificationState {
@@ -29,7 +29,8 @@ export const useNotifications = () => {
     }
   });
   
-  // Track shown toasts to prevent duplicates
+  // Track shown toasts to prevent duplicates (using ref for synchronous access)
+  const shownToastsRef = useRef<Set<string>>(new Set());
   const [shownToasts, setShownToasts] = useState<Set<string>>(new Set());
 
   // Handle new notifications
@@ -40,6 +41,16 @@ export const useNotifications = () => {
       title: notification.title,
       timestamp: notification.timestamp
     });
+    
+    // Check if we've already shown a toast for this notification FIRST (synchronous check)
+    if (shownToastsRef.current.has(notification.id)) {
+      log.info('Toast already shown for notification, skipping:', notification.id);
+      return;
+    }
+
+    // Mark this toast as shown IMMEDIATELY to prevent race conditions (synchronous update)
+    shownToastsRef.current.add(notification.id);
+    setShownToasts(prev => new Set([...prev, notification.id]));
     
     setState(prev => {
       // Check if we already have this notification to prevent duplicates
@@ -55,15 +66,6 @@ export const useNotifications = () => {
         unreadCount: prev.unreadCount + 1
       };
     });
-
-    // Check if we've already shown a toast for this notification
-    if (shownToasts.has(notification.id)) {
-      log.info('Toast already shown for notification, skipping:', notification.id);
-      return;
-    }
-
-    // Mark this toast as shown
-    setShownToasts(prev => new Set([...prev, notification.id]));
 
     // Play sound notification
     if (notification.type === 'new_order') {
@@ -148,14 +150,13 @@ export const useNotifications = () => {
   // Clean up old toast IDs periodically to prevent memory leaks
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
-      setShownToasts(prev => {
-        // Keep only the last 100 toast IDs
-        const toastArray = Array.from(prev);
-        if (toastArray.length > 100) {
-          return new Set(toastArray.slice(-100));
-        }
-        return prev;
-      });
+      // Keep only the last 100 toast IDs in both ref and state
+      const toastArray = Array.from(shownToastsRef.current);
+      if (toastArray.length > 100) {
+        const newSet = new Set(toastArray.slice(-100));
+        shownToastsRef.current = newSet;
+        setShownToasts(newSet);
+      }
     }, 60000); // Clean up every minute
 
     return () => clearInterval(cleanupInterval);
@@ -199,6 +200,7 @@ export const useNotifications = () => {
       unreadCount: 0
     }));
     // Also clear shown toasts
+    shownToastsRef.current.clear();
     setShownToasts(new Set());
   }, []);
 
