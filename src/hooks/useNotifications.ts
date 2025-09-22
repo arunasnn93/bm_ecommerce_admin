@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useAuthStore } from '@store/authStore';
-import { websocketService, type NotificationData, type NewOrderNotification } from '@services/websocket';
 import { soundNotificationService } from '@services/soundNotification';
+import { websocketService, type NewOrderNotification, type NotificationData } from '@services/websocket';
+import { useAuthStore } from '@store/authStore';
 import { log } from '@utils/logger';
+import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
 export interface NotificationState {
@@ -113,17 +113,8 @@ export const useNotifications = () => {
     log.info('WebSocket connection status changed:', connected);
     setState(prev => ({ ...prev, isConnected: connected }));
     
-    if (connected) {
-      toast.success('🔔 Real-time notifications connected', {
-        duration: 2000,
-        position: 'top-right',
-      });
-    } else {
-      toast.error('🔌 Real-time notifications disconnected', {
-        duration: 3000,
-        position: 'top-right',
-      });
-    }
+    // No toast notifications for connection status changes
+    // Users can see connection status in the notification bell
   }, []);
 
   // Connect to WebSocket when user is authenticated
