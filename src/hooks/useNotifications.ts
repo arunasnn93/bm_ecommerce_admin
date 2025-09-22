@@ -28,6 +28,9 @@ export const useNotifications = () => {
       soundType: soundNotificationService.getSoundType(),
     }
   });
+  
+  // Track shown toasts to prevent duplicates
+  const [shownToasts, setShownToasts] = useState<Set<string>>(new Set());
 
   // Handle new notifications
   const handleNotification = useCallback((notification: NotificationData) => {
@@ -52,6 +55,15 @@ export const useNotifications = () => {
         unreadCount: prev.unreadCount + 1
       };
     });
+
+    // Check if we've already shown a toast for this notification
+    if (shownToasts.has(notification.id)) {
+      log.info('Toast already shown for notification, skipping:', notification.id);
+      return;
+    }
+
+    // Mark this toast as shown
+    setShownToasts(prev => new Set([...prev, notification.id]));
 
     // Play sound notification
     if (notification.type === 'new_order') {
@@ -94,7 +106,7 @@ export const useNotifications = () => {
               notification.type === 'success' ? '✅' : 'ℹ️',
       });
     }
-  }, []);
+  }, [shownToasts]);
 
   // Handle connection status changes
   const handleConnectionChange = useCallback((connected: boolean) => {
@@ -142,6 +154,22 @@ export const useNotifications = () => {
     };
   }, [handleNotification, handleConnectionChange]);
 
+  // Clean up old toast IDs periodically to prevent memory leaks
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      setShownToasts(prev => {
+        // Keep only the last 100 toast IDs
+        const toastArray = Array.from(prev);
+        if (toastArray.length > 100) {
+          return new Set(toastArray.slice(-100));
+        }
+        return prev;
+      });
+    }, 60000); // Clean up every minute
+
+    return () => clearInterval(cleanupInterval);
+  }, []);
+
   // Update settings when they change
   useEffect(() => {
     setState(prev => ({
@@ -179,6 +207,8 @@ export const useNotifications = () => {
       notifications: [],
       unreadCount: 0
     }));
+    // Also clear shown toasts
+    setShownToasts(new Set());
   }, []);
 
   const updateSoundSettings = useCallback((settings: Partial<NotificationState['settings']>) => {
