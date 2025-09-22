@@ -1,4 +1,5 @@
 import { soundNotificationService } from '@services/soundNotification';
+import { speechNotificationService } from '@services/speechNotification';
 import { websocketService, type NewOrderNotification, type NotificationData } from '@services/websocket';
 import { useAuthStore } from '@store/authStore';
 import { log } from '@utils/logger';
@@ -13,6 +14,11 @@ export interface NotificationState {
     soundEnabled: boolean;
     volume: number;
     soundType: 'default' | 'chime' | 'bell' | 'notification';
+    speechEnabled: boolean;
+    speechVoice: string;
+    speechRate: number;
+    speechPitch: number;
+    speechVolume: number;
   };
 }
 
@@ -25,6 +31,11 @@ let globalNotificationState: NotificationState = {
     soundEnabled: soundNotificationService.isEnabled(),
     volume: soundNotificationService.getVolume(),
     soundType: soundNotificationService.getSoundType(),
+    speechEnabled: speechNotificationService.isEnabled(),
+    speechVoice: speechNotificationService.getSettings().voice,
+    speechRate: speechNotificationService.getSettings().rate,
+    speechPitch: speechNotificationService.getSettings().pitch,
+    speechVolume: speechNotificationService.getSettings().volume,
   }
 };
 
@@ -97,12 +108,19 @@ export const useNotifications = () => {
       setter(globalNotificationState);
     });
 
-    // Play sound notification
+    // Play sound and speech notifications
     if (notification.type === 'new_order') {
+      // Play sound notification
       soundNotificationService.playNotificationSound('new_order');
       
-      // Show toast notification
+      // Speak the notification
       const newOrderNotification = notification as NewOrderNotification;
+      const customerName = newOrderNotification.data.customerName;
+      speechNotificationService.speakNewOrder(customerName).catch(error => {
+        log.error('Failed to speak new order notification:', error);
+      });
+      
+      // Show toast notification
       toast.success(
         `🛒 New Order #${newOrderNotification.data.orderId.slice(-8)} from ${newOrderNotification.data.customerName}`,
         {
@@ -116,7 +134,13 @@ export const useNotifications = () => {
         }
       );
     } else if (notification.type === 'order_update') {
+      // Play sound notification
       soundNotificationService.playNotificationSound('order_update');
+      
+      // Speak the notification
+      speechNotificationService.speakOrderUpdate(notification.message).catch(error => {
+        log.error('Failed to speak order update notification:', error);
+      });
       
       toast(
         `📦 Order Update: ${notification.message}`,
@@ -129,6 +153,11 @@ export const useNotifications = () => {
     } else {
       // Generic notification
       soundNotificationService.playNotificationSound('info');
+      
+      // Speak the notification
+      speechNotificationService.speakGeneric(notification.message).catch(error => {
+        log.error('Failed to speak generic notification:', error);
+      });
       
       toast(notification.message, {
         duration: 3000,
@@ -205,6 +234,11 @@ export const useNotifications = () => {
         soundEnabled: soundNotificationService.isEnabled(),
         volume: soundNotificationService.getVolume(),
         soundType: soundNotificationService.getSoundType(),
+        speechEnabled: speechNotificationService.isEnabled(),
+        speechVoice: speechNotificationService.getSettings().voice,
+        speechRate: speechNotificationService.getSettings().rate,
+        speechPitch: speechNotificationService.getSettings().pitch,
+        speechVolume: speechNotificationService.getSettings().volume,
       }
     };
     
@@ -251,6 +285,7 @@ export const useNotifications = () => {
   }, []);
 
   const updateSoundSettings = useCallback((settings: Partial<NotificationState['settings']>) => {
+    // Update sound settings
     if (settings.soundEnabled !== undefined) {
       soundNotificationService.setEnabled(settings.soundEnabled);
     }
@@ -259,6 +294,23 @@ export const useNotifications = () => {
     }
     if (settings.soundType !== undefined) {
       soundNotificationService.setSoundType(settings.soundType);
+    }
+    
+    // Update speech settings
+    if (settings.speechEnabled !== undefined || 
+        settings.speechVoice !== undefined || 
+        settings.speechRate !== undefined || 
+        settings.speechPitch !== undefined || 
+        settings.speechVolume !== undefined) {
+      
+      const speechSettings: any = {};
+      if (settings.speechEnabled !== undefined) speechSettings.enabled = settings.speechEnabled;
+      if (settings.speechVoice !== undefined) speechSettings.voice = settings.speechVoice;
+      if (settings.speechRate !== undefined) speechSettings.rate = settings.speechRate;
+      if (settings.speechPitch !== undefined) speechSettings.pitch = settings.speechPitch;
+      if (settings.speechVolume !== undefined) speechSettings.volume = settings.speechVolume;
+      
+      speechNotificationService.updateSettings(speechSettings);
     }
     
     globalNotificationState = {
@@ -275,6 +327,12 @@ export const useNotifications = () => {
 
   const testSound = useCallback(() => {
     soundNotificationService.playNotificationSound('new_order');
+  }, []);
+
+  const testSpeech = useCallback(() => {
+    speechNotificationService.testSpeech().catch(error => {
+      log.error('Failed to test speech:', error);
+    });
   }, []);
 
   const ping = useCallback(() => {
@@ -294,6 +352,7 @@ export const useNotifications = () => {
     clearNotifications,
     updateSoundSettings,
     testSound,
+    testSpeech,
     ping,
     
     // WebSocket actions

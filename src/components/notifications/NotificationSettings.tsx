@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Bell, Volume2, VolumeX, Settings, TestTube } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bell, Volume2, VolumeX, Settings, TestTube, Mic, MicOff } from 'lucide-react';
 import { useNotifications } from '@hooks/useNotifications';
+import { speechNotificationService } from '@services/speechNotification';
 
 interface NotificationSettingsProps {
   isOpen: boolean;
@@ -8,8 +9,9 @@ interface NotificationSettingsProps {
 }
 
 const NotificationSettings: React.FC<NotificationSettingsProps> = ({ isOpen, onClose }) => {
-  const { settings, updateSoundSettings, testSound, isConnected } = useNotifications();
+  const { settings, updateSoundSettings, testSound, testSpeech, isConnected } = useNotifications();
   const [localSettings, setLocalSettings] = useState(settings);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   const handleSave = () => {
     updateSoundSettings(localSettings);
@@ -19,6 +21,18 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ isOpen, onC
   const handleTestSound = () => {
     testSound();
   };
+
+  const handleTestSpeech = () => {
+    testSpeech();
+  };
+
+  // Load available voices when component mounts
+  useEffect(() => {
+    if (isOpen) {
+      const voices = speechNotificationService.getAvailableVoices();
+      setAvailableVoices(voices);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -143,6 +157,133 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ isOpen, onC
               Test Sound
             </button>
           </div>
+        )}
+
+        {/* Speech Notifications Toggle */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm font-medium text-gray-700">
+              Speech Notifications
+            </label>
+            <button
+              onClick={() => setLocalSettings(prev => ({ ...prev, speechEnabled: !prev.speechEnabled }))}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                localSettings.speechEnabled ? 'bg-primary-600' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  localSettings.speechEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <p className="text-xs text-gray-500">
+            Announce new orders using text-to-speech
+          </p>
+        </div>
+
+        {/* Speech Settings */}
+        {localSettings.speechEnabled && (
+          <>
+            {/* Voice Selection */}
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Voice
+              </label>
+              <select
+                value={localSettings.speechVoice}
+                onChange={(e) => setLocalSettings(prev => ({ ...prev, speechVoice: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="default">Default Voice</option>
+                {availableVoices.map((voice) => (
+                  <option key={voice.name} value={voice.name}>
+                    {voice.name} ({voice.lang})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Speech Rate */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Speech Rate
+                </label>
+                <span className="text-sm text-gray-600">
+                  {localSettings.speechRate.toFixed(1)}x
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value={localSettings.speechRate}
+                onChange={(e) => setLocalSettings(prev => ({ ...prev, speechRate: parseFloat(e.target.value) }))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+              />
+            </div>
+
+            {/* Speech Pitch */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Speech Pitch
+                </label>
+                <span className="text-sm text-gray-600">
+                  {localSettings.speechPitch.toFixed(1)}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={localSettings.speechPitch}
+                onChange={(e) => setLocalSettings(prev => ({ ...prev, speechPitch: parseFloat(e.target.value) }))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+              />
+            </div>
+
+            {/* Speech Volume */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center">
+                  {localSettings.speechVolume > 0 ? (
+                    <Mic className="h-4 w-4 mr-1" />
+                  ) : (
+                    <MicOff className="h-4 w-4 mr-1" />
+                  )}
+                  Speech Volume
+                </label>
+                <span className="text-sm text-gray-600">
+                  {Math.round(localSettings.speechVolume * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={localSettings.speechVolume}
+                onChange={(e) => setLocalSettings(prev => ({ ...prev, speechVolume: parseFloat(e.target.value) }))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+              />
+            </div>
+
+            {/* Test Speech Button */}
+            <div className="mb-6">
+              <button
+                onClick={handleTestSpeech}
+                className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 border border-primary-200 rounded-md hover:bg-primary-100 transition-colors"
+              >
+                <TestTube className="h-4 w-4 mr-2" />
+                Test Speech
+              </button>
+            </div>
+          </>
         )}
 
         {/* Action Buttons */}
