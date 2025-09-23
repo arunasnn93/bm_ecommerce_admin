@@ -439,14 +439,20 @@ const OrdersPage: React.FC = () => {
                   <TableCell>
                     <div className="text-sm">
                       {order.bulk_items_text ? (
-                        <div>
-                          <div className="font-medium text-blue-600">Bulk Order</div>
-                          <div className="text-xs text-gray-500 mt-1 max-w-xs">
-                            <div className="truncate" title={order.bulk_items_text}>
-                              {order.bulk_items_text.length > 50 
-                                ? `${order.bulk_items_text.substring(0, 50)}...` 
+                        <div className="max-w-xs">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-blue-600 text-xs">🛒</span>
+                            <span className="font-medium text-blue-600 text-xs">Shopping List</span>
+                          </div>
+                          <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                            <div className="text-xs text-gray-700 font-mono leading-relaxed">
+                              {order.bulk_items_text.length > 80 
+                                ? `${order.bulk_items_text.substring(0, 80)}...` 
                                 : order.bulk_items_text}
                             </div>
+                          </div>
+                          <div className="text-xs text-blue-500 mt-1">
+                            {order.bulk_items_text.split('\n').filter(line => line.trim()).length} items
                           </div>
                         </div>
                       ) : (
@@ -600,21 +606,56 @@ const OrdersPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Bulk Items Text */}
-            {selectedOrder.bulk_items_text && (
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-3">Customer's Shopping List</h4>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="whitespace-pre-wrap text-blue-800 font-mono text-sm leading-relaxed">
-                    {selectedOrder.bulk_items_text}
+            {/* Order Items / Shopping List */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-3">
+                {selectedOrder.bulk_items_text ? '🛒 Customer\'s Shopping List' : '📦 Order Items'}
+              </h4>
+              
+              {selectedOrder.bulk_items_text ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 text-sm">📝</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm text-blue-600 mb-2 font-medium">
+                        Customer's shopping list as typed:
+                      </div>
+                      <div className="whitespace-pre-wrap text-gray-800 font-mono text-sm leading-relaxed bg-white p-4 rounded border">
+                        {selectedOrder.bulk_items_text}
+                      </div>
+                      <div className="text-xs text-blue-500 mt-2">
+                        💡 Delivery executive will read this list and calculate the total
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="space-y-2">
+                  {(selectedOrder.items || selectedOrder.order_items) && (selectedOrder.items || selectedOrder.order_items)!.length > 0 ? (
+                    (selectedOrder.items || selectedOrder.order_items)!.map((item, index) => (
+                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">{item.name}</div>
+                          <div className="text-sm text-gray-600">Qty: {item.quantity}</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      No items found for this order
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Order Total */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-3">Order Total</h4>
+              <h4 className="text-lg font-medium text-gray-900 mb-3">💰 Order Total</h4>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span>Total Amount:</span>
