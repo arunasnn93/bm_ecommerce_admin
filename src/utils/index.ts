@@ -243,6 +243,6 @@ export const downloadFile = (url: string, filename: string) => {
 };
 
 // Bulk items parsing utilities
-export * from './bulkItemsParser';
+// Removed bulkItemsParser - no longer needed
 
 

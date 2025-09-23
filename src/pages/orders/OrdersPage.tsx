@@ -18,7 +18,7 @@ import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 
 import type { Order, OrderFilters, SendMessageForm, UpdateOrderPriceForm, UpdateOrderStatusForm } from '@/types';
-import { formatCurrency, formatDate, getBulkItemsPreview } from '@/utils';
+import { formatCurrency, formatDate } from '@/utils';
 import { DEFAULTS, ORDER_STATUS, ORDER_STATUS_LABELS } from '@constants';
 import { apiService } from '@services/api';
 import { log } from '@utils/logger';
@@ -443,11 +443,10 @@ const OrdersPage: React.FC = () => {
                           <div className="font-medium text-blue-600">Bulk Order</div>
                           <div className="text-xs text-gray-500 mt-1 max-w-xs">
                             <div className="truncate" title={order.bulk_items_text}>
-                              {getBulkItemsPreview(order.bulk_items_text, 2)}
+                              {order.bulk_items_text.length > 50 
+                                ? `${order.bulk_items_text.substring(0, 50)}...` 
+                                : order.bulk_items_text}
                             </div>
-                          </div>
-                          <div className="text-xs text-gray-400 mt-1">
-                            {(order.items || order.order_items)?.length || 0} parsed items
                           </div>
                         </div>
                       ) : (
@@ -613,31 +612,18 @@ const OrdersPage: React.FC = () => {
               </div>
             )}
 
-            {/* Order Items */}
+            {/* Order Total */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-3">
-                {selectedOrder.bulk_items_text ? 'Parsed Items' : 'Order Items'}
-              </h4>
-              <div className="space-y-2">
-                {(selectedOrder.items || selectedOrder.order_items) && (selectedOrder.items || selectedOrder.order_items)!.length > 0 ? (
-                  (selectedOrder.items || selectedOrder.order_items)!.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <div className="font-medium">{item.name}</div>
-                        <div className="text-sm text-gray-600">Qty: {item.quantity}</div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-4 text-gray-500">
-                    {selectedOrder.bulk_items_text ? 'No items could be parsed from the shopping list' : 'No items found for this order'}
-                  </div>
-                )}
-                <div className="border-t pt-2 mt-4">
-                  <div className="flex justify-between items-center text-lg font-bold">
-                    <span>Total:</span>
-                    <span>{formatCurrency(selectedOrder.total_amount)}</span>
-                  </div>
+              <h4 className="text-lg font-medium text-gray-900 mb-3">Order Total</h4>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex justify-between items-center text-lg font-bold">
+                  <span>Total Amount:</span>
+                  <span>{formatCurrency(selectedOrder.total_amount)}</span>
+                </div>
+                <div className="text-sm text-gray-600 mt-2">
+                  {selectedOrder.bulk_items_text 
+                    ? 'Amount to be calculated by delivery executive' 
+                    : 'Amount calculated from individual items'}
                 </div>
               </div>
             </div>
