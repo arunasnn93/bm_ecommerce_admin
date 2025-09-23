@@ -18,7 +18,7 @@ import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 
 import type { Order, OrderFilters, SendMessageForm, UpdateOrderPriceForm, UpdateOrderStatusForm } from '@/types';
-import { formatCurrency, formatDate } from '@/utils';
+import { formatCurrency, formatDate, getBulkItemsPreview } from '@/utils';
 import { DEFAULTS, ORDER_STATUS, ORDER_STATUS_LABELS } from '@constants';
 import { apiService } from '@services/api';
 import { log } from '@utils/logger';
@@ -438,7 +438,23 @@ const OrdersPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {order.items?.length || 0} item{(order.items?.length || 0) !== 1 ? 's' : ''}
+                      {order.bulk_items_text ? (
+                        <div>
+                          <div className="font-medium text-blue-600">Bulk Order</div>
+                          <div className="text-xs text-gray-500 mt-1 max-w-xs">
+                            <div className="truncate" title={order.bulk_items_text}>
+                              {getBulkItemsPreview(order.bulk_items_text, 2)}
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            {(order.items || order.order_items)?.length || 0} parsed items
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          {(order.items || order.order_items)?.length || 0} item{((order.items || order.order_items)?.length || 0) !== 1 ? 's' : ''}
+                        </div>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -585,12 +601,26 @@ const OrdersPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Bulk Items Text */}
+            {selectedOrder.bulk_items_text && (
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Customer's Shopping List</h4>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="whitespace-pre-wrap text-blue-800 font-mono text-sm leading-relaxed">
+                    {selectedOrder.bulk_items_text}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Order Items */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-3">Order Items</h4>
+              <h4 className="text-lg font-medium text-gray-900 mb-3">
+                {selectedOrder.bulk_items_text ? 'Parsed Items' : 'Order Items'}
+              </h4>
               <div className="space-y-2">
-                {selectedOrder.items && selectedOrder.items.length > 0 ? (
-                  selectedOrder.items.map((item, index) => (
+                {(selectedOrder.items || selectedOrder.order_items) && (selectedOrder.items || selectedOrder.order_items)!.length > 0 ? (
+                  (selectedOrder.items || selectedOrder.order_items)!.map((item, index) => (
                     <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                       <div>
                         <div className="font-medium">{item.name}</div>
@@ -600,7 +630,7 @@ const OrdersPage: React.FC = () => {
                   ))
                 ) : (
                   <div className="text-center py-4 text-gray-500">
-                    No items found for this order
+                    {selectedOrder.bulk_items_text ? 'No items could be parsed from the shopping list' : 'No items found for this order'}
                   </div>
                 )}
                 <div className="border-t pt-2 mt-4">

@@ -84,6 +84,7 @@ export interface Order {
   };
   items?: OrderItem[]; // Optional since backend might not always return
   order_items?: OrderItem[]; // Backend provides this field name
+  bulk_items_text?: string; // Raw bulk items text from customer
   total_amount: number;
   status: 'submitted' | 'accepted' | 'rejected' | 'packing' | 'ready' | 'delivered';
   delivery_address: DeliveryAddress | string; // Backend might provide string
