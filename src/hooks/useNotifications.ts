@@ -43,7 +43,7 @@ let globalShownToasts = new Set<string>();
 let globalStateSetters: Set<React.Dispatch<React.SetStateAction<NotificationState>>> = new Set();
 let globalToastSetters: Set<React.Dispatch<React.SetStateAction<Set<string>>>> = new Set();
 
-export const useNotifications = () => {
+export const useNotifications = (onNewOrder?: () => void) => {
   const { user, token, isAuthenticated } = useAuthStore();
   const [state, setState] = useState<NotificationState>(globalNotificationState);
   const [shownToasts, setShownToasts] = useState<Set<string>>(globalShownToasts);
@@ -133,6 +133,11 @@ export const useNotifications = () => {
           },
         }
       );
+
+      // Call the callback to refresh orders list
+      if (onNewOrder) {
+        onNewOrder();
+      }
     } else if (notification.type === 'order_update') {
       // Play sound notification
       soundNotificationService.playNotificationSound('order_update');

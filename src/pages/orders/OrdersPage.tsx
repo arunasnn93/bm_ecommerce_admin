@@ -22,6 +22,7 @@ import { formatCurrency, formatDate } from '@/utils';
 import { DEFAULTS, ORDER_STATUS, ORDER_STATUS_LABELS } from '@constants';
 import { apiService } from '@services/api';
 import { log } from '@utils/logger';
+import { useNotifications } from '@hooks/useNotifications';
 
 import { FormField, SearchInput } from '@components/forms';
 import {
@@ -78,6 +79,13 @@ const OrdersPage: React.FC = () => {
   const [isItemsModalOpen, setIsItemsModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
+  // Initialize notifications for real-time updates
+  useNotifications(() => {
+    // Refresh orders list when a new order notification is received
+    console.log('🔄 [OrdersPage] New order notification received, refreshing orders list...');
+    refetchOrders();
+  });
+
   const { control: statusControl, handleSubmit: handleStatusSubmit, reset: resetStatus } = useForm<UpdateOrderStatusForm>({
     resolver: yupResolver(updateStatusSchema) as any,
   });
@@ -91,7 +99,7 @@ const OrdersPage: React.FC = () => {
   });
 
   // Fetch orders query
-  const { data: ordersData, isLoading, error } = useQuery({
+  const { data: ordersData, isLoading, error, refetch: refetchOrders } = useQuery({
     queryKey: ['orders', filters],
     queryFn: async () => {
       console.log('🔍 [OrdersPage] Fetching orders with filters:', filters);
