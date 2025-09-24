@@ -446,38 +446,15 @@ const OrdersPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {order.bulk_items_text ? (
-                        <button
-                          onClick={() => handleViewItems(order)}
-                          className="max-w-xs text-left hover:bg-gray-50 rounded p-2 transition-colors"
-                        >
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-blue-600 text-xs">🛒</span>
-                            <span className="font-medium text-blue-600 text-xs">Shopping List</span>
-                            <span className="text-blue-500 text-xs">(Click to view)</span>
-                          </div>
-                          <div className="bg-blue-50 border border-blue-200 rounded p-2">
-                            <div className="text-xs text-gray-700 font-mono leading-relaxed">
-                              {order.bulk_items_text.length > 60 
-                                ? `${order.bulk_items_text.substring(0, 60)}...` 
-                                : order.bulk_items_text}
-                            </div>
-                          </div>
-                          <div className="text-xs text-blue-500 mt-1">
-                            {order.bulk_items_text.split('\n').filter(line => line.trim()).length} items
-                          </div>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleViewItems(order)}
-                          className="text-left hover:bg-gray-50 rounded p-2 transition-colors"
-                        >
-                          <div className="text-blue-600 hover:text-blue-800">
-                            {(order.items || order.order_items)?.length || 0} item{((order.items || order.order_items)?.length || 0) !== 1 ? 's' : ''}
-                            <span className="text-xs text-gray-500 ml-1">(Click to view)</span>
-                          </div>
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleViewItems(order)}
+                        className="text-left hover:bg-gray-50 rounded p-2 transition-colors w-full"
+                      >
+                        <div className="text-blue-600 hover:text-blue-800 flex items-center space-x-2">
+                          <span className="text-blue-600">🛒</span>
+                          <span>Click to view</span>
+                        </div>
+                      </button>
                     </div>
                   </TableCell>
                   <TableCell>
