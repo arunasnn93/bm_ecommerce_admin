@@ -74,6 +74,8 @@ const OrdersPage: React.FC = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
+  const [selectedItemsOrder, setSelectedItemsOrder] = useState<Order | null>(null);
+  const [isItemsModalOpen, setIsItemsModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { control: statusControl, handleSubmit: handleStatusSubmit, reset: resetStatus } = useForm<UpdateOrderStatusForm>({
@@ -246,6 +248,12 @@ const OrdersPage: React.FC = () => {
     });
     setSelectedOrder(order);
     setIsImageModalOpen(true);
+  };
+
+  const handleViewItems = (order: Order) => {
+    log.ui.userAction('view-order-items', { orderId: order.id });
+    setSelectedItemsOrder(order);
+    setIsItemsModalOpen(true);
   };
 
   const handleUpdatePrice = (order: Order) => {
@@ -439,26 +447,36 @@ const OrdersPage: React.FC = () => {
                   <TableCell>
                     <div className="text-sm">
                       {order.bulk_items_text ? (
-                        <div className="max-w-xs">
+                        <button
+                          onClick={() => handleViewItems(order)}
+                          className="max-w-xs text-left hover:bg-gray-50 rounded p-2 transition-colors"
+                        >
                           <div className="flex items-center space-x-2 mb-1">
                             <span className="text-blue-600 text-xs">🛒</span>
                             <span className="font-medium text-blue-600 text-xs">Shopping List</span>
+                            <span className="text-blue-500 text-xs">(Click to view)</span>
                           </div>
                           <div className="bg-blue-50 border border-blue-200 rounded p-2">
                             <div className="text-xs text-gray-700 font-mono leading-relaxed">
-                              {order.bulk_items_text.length > 80 
-                                ? `${order.bulk_items_text.substring(0, 80)}...` 
+                              {order.bulk_items_text.length > 60 
+                                ? `${order.bulk_items_text.substring(0, 60)}...` 
                                 : order.bulk_items_text}
                             </div>
                           </div>
                           <div className="text-xs text-blue-500 mt-1">
                             {order.bulk_items_text.split('\n').filter(line => line.trim()).length} items
                           </div>
-                        </div>
+                        </button>
                       ) : (
-                        <div>
-                          {(order.items || order.order_items)?.length || 0} item{((order.items || order.order_items)?.length || 0) !== 1 ? 's' : ''}
-                        </div>
+                        <button
+                          onClick={() => handleViewItems(order)}
+                          className="text-left hover:bg-gray-50 rounded p-2 transition-colors"
+                        >
+                          <div className="text-blue-600 hover:text-blue-800">
+                            {(order.items || order.order_items)?.length || 0} item{((order.items || order.order_items)?.length || 0) !== 1 ? 's' : ''}
+                            <span className="text-xs text-gray-500 ml-1">(Click to view)</span>
+                          </div>
+                        </button>
                       )}
                     </div>
                   </TableCell>
@@ -959,6 +977,96 @@ const OrdersPage: React.FC = () => {
                 type="button"
                 variant="outline"
                 onClick={() => setIsImageModalOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Items Modal */}
+      <Modal
+        isOpen={isItemsModalOpen}
+        onClose={() => setIsItemsModalOpen(false)}
+        title="Order Items"
+        size="lg"
+      >
+        {selectedItemsOrder && (
+          <div className="space-y-4">
+            {/* Order Info */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Order #{selectedItemsOrder.id}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Customer: {selectedItemsOrder.customer_name} ({selectedItemsOrder.customer_mobile})
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-600">Status</div>
+                  <Badge variant={selectedItemsOrder.status === 'delivered' ? 'success' : 'warning'}>
+                    {ORDER_STATUS_LABELS[selectedItemsOrder.status as keyof typeof ORDER_STATUS_LABELS]}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Items Display */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-3">
+                {selectedItemsOrder.bulk_items_text ? '🛒 Customer\'s Shopping List' : '📦 Order Items'}
+              </h4>
+              
+              {selectedItemsOrder.bulk_items_text ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 text-sm">📝</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm text-blue-600 mb-2 font-medium">
+                        Customer's shopping list as typed:
+                      </div>
+                      <div className="whitespace-pre-wrap text-gray-800 font-mono text-sm leading-relaxed bg-white p-4 rounded border max-h-96 overflow-y-auto">
+                        {selectedItemsOrder.bulk_items_text}
+                      </div>
+                      <div className="text-xs text-blue-500 mt-2">
+                        💡 Delivery executive will read this list and calculate the total
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {(selectedItemsOrder.items || selectedItemsOrder.order_items) && (selectedItemsOrder.items || selectedItemsOrder.order_items)!.length > 0 ? (
+                    (selectedItemsOrder.items || selectedItemsOrder.order_items)!.map((item, index) => (
+                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">{item.name}</div>
+                          <div className="text-sm text-gray-600">Qty: {item.quantity}</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      No items found for this order
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsItemsModalOpen(false)}
               >
                 Close
               </Button>
